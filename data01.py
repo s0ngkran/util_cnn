@@ -3,6 +3,7 @@ import os
 import json
 from PIL import Image
 from torchvision import transforms
+import random as r
 
 import sys
 sys.path.append('../../')
@@ -33,6 +34,27 @@ class DME_1k(Dataset):
             data = json.load(f)
         return data
 
+    def mix_data(self, dataset_name):
+        assert dataset_name in ['training', 'validation', 'testing']
+        tr = self.read_data('training')
+        va = self.read_data('validation')
+        te = self.read_data('testing')
+        data = tr + va + te
+
+        # blend data
+        seed = 0
+        r.Random(seed).shuffle(data)
+        n = len(data)
+        n1 = int(n * 0.7)
+        n2 = int(n * 0.85) 
+        tr, va, te = data[:n1], data[n1:n2], data[n2:]
+        print(f'mix data {len(tr)=} {len(va)=} {len(te)=}')
+
+        if dataset_name == 'training': return tr
+        elif dataset_name == 'validation': return va
+        elif dataset_name == 'testing': return te
+
+
     def read_data(self, dataset_name):
         assert dataset_name in ['training', 'validation', 'testing']
         root = '../../dme_1k/'
@@ -62,8 +84,8 @@ class DME_1k(Dataset):
             print('bef image size|mode =', image.size, image.mode)
 
         preprocess = transforms.Compose([
-            transforms.Resize(128),
-            # transforms.Resize(360),
+            # transforms.Resize(128),
+            transforms.Resize(360),
             transforms.ToTensor(),
             # transforms.Normalize(mean=[0.485, 0.456, 0.406],
             #                   std=[0.229, 0.224, 0.225]),
@@ -84,7 +106,8 @@ class DME_1k(Dataset):
 
     def __init__(self, dataset, test_mode=False, is_load_img=True):
         print('init dme 1k dataset', dataset)
-        data = self.read_data(dataset)
+        # data = self.read_data(dataset)
+        data = self.mix_data(dataset)
         
         self.img_path = []
         self.img = []
