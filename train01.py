@@ -374,6 +374,7 @@ auto batch size -> 1
         model.eval()
         pred_list = []
         gt_list = []
+        n = len(testing_set_loader)
         with torch.no_grad():
             loss, loss_gts, loss_gtl = [], [], []
             data = {}
@@ -383,13 +384,24 @@ auto batch size -> 1
                 assert inp.shape[0] == 1
                 
                 output = model(inp) 
-                pred_list.append(output[0].numpy())
+                pred = output[0].numpy() # list of 11 elements
+                # print('pred', pred, 'type', type(pred))
+                pred_list.append(pred)
                 
                 gt = dat['ground_truth']
                 gt_list.append(int(gt[0]))
-                print('iter',iteration)
+                print('iter',iteration, '/', n)
                 # if iteration > 10: break
             assert len(gt_list) == len(pred_list)
+            out = {
+                    'pred_list': pred_list,
+                    'gt_list': gt_list,
+                  }
+            # write_json('result.json', out)
+            torch_save('result.pt', out)
+            print('done')
+            1/0
+
             correct = 0
             fail = 0
             for gt, pr in zip(gt_list, pred_list):
@@ -403,6 +415,14 @@ auto batch size -> 1
             mAP = calculate_map(gt_list.numpy(), pred_list)
             print('mAP=',mAP)
             1/0 
+    def torch_save(filename, out):
+        torch.save(out, filename)
+
+    def write_json(filename, out):
+        assert filename.endswith('.json')
+        with open(filename, 'w') as f:
+            json.dump(out, f)
+        print('writed', filename)
 
     def test_write():
         global model, global_loss
