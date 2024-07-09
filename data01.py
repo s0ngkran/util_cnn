@@ -6,26 +6,64 @@ from torchvision import transforms
 
 import sys
 sys.path.append('../../')
-from s1_data_model import S1DataModel
+from dataclasses import dataclass
+from typing import List
 
-class Dataset_S1_1000(Dataset):
-    def read_data(self):
-        path = '/host/s1_data/s1_data/img1000/img1000.json'
+all_gt = [i for i in range(11)]
+# wrong_gt = [496, 497, 796, 1290, 1289, 1318, 86, 1292, 1291]
+wrong_gt = []
 
-        path = '/home/tatpong/skd'
-        # path = path + '/s1_data/s1_data/img1000/img1000.json'
-        path = path + '/s1_data/s1_data/img3000/ready_new.json'
-        data = S1DataModel(json_path=path, out_jpg_dir='../../')
+@dataclass
+class Data:
+    img_path: str
+    key: str
+    keypoint: List
+    hand_side: str
+    gt: int
+    user: str
+
+    def __post_init__(self):
+        self.keypoint = [(float(d[0]), float(d[1])) for d  in self.keypoint]
+        assert self.gt in all_gt, f'gt-{self.gt}'
+
+
+class DME_5k(Dataset):
+    def read_json(self, path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+        return data
+
+    def read_data(self, dataset_name):
+        assert dataset_name in ['training', 'validation', 'testing']
+        root = '../../dme_5k/'
+        json = self.read_json(os.path.join(root, f'{dataset_name}_set.json'))
+
+        data = []
+        for i, (k,v) in enumerate(json.items()):
+            if i in wrong_gt: continue
+            path = v['path']
+            img_path = os.path.join(root, path)
+            key = path.split('/')[-1].split('.')[0]
+            keypoints = v['keypoint']
+            hand_side = v['hand_side']
+            gt = int(v['gt'])
+            if gt == 11: continue
+            user = v['user']
+            o = Data(img_path, key, keypoints, hand_side, gt, user)
+            data.append(o)
         return data
 
     def load_img(self, image_path, log=False):
         image = Image.open(image_path)
         # 0-255
         if log:
+            print()
+            print('-----log load_img()')
             print('bef image size|mode =', image.size, image.mode)
 
         preprocess = transforms.Compose([
-            transforms.Resize(128),
+            # transforms.Resize(128),
+            transforms.Resize(360),
             transforms.ToTensor(),
             # transforms.Normalize(mean=[0.485, 0.456, 0.406],
             #                   std=[0.229, 0.224, 0.225]),
@@ -39,61 +77,37 @@ class Dataset_S1_1000(Dataset):
             # approx -> -2 to 2
             image_array = image_tensor.numpy()
             print('min, max =',image_array.min(), image_array.max())
+            print('-----end log load_img()')
+            print()
         
         return image_tensor
 
     def __init__(self, dataset, test_mode=False):
-        dataset_key = {
-            'training': 'tr',
-            'validation': 'va',
-            'testing': 'te',
-        }
-        dataset = dataset_key[dataset]
-
-        s = self.read_data()
-        # assert len(s.data) == 1000
-        
-        allowed_gt = [str(i) for i in range(0, 11)]
+        print('init dme 1k dataset', dataset)
+        data = self.read_data(dataset)
         
         self.img_path = []
         self.img = []
         self.ground_truth = []
         
-        tr_set = s.get_only_set('tr')
-        va_set = s.get_only_set('va')
-        te_set = s.get_only_set('te')
-        # assert len(tr_set) == 698
-        #assert len(va_set) == 153
-        #assert len(te_set) == 149
-        assert len(tr_set) > 698
-        assert len(va_set) > 153
-        assert len(te_set) > 149
-        
-        data = s.get_only_set(dataset)
-        data = list(data.values())
-        
         if test_mode:
             data = data[:100]
             
+        print('start load image...')
         for i, dat in enumerate(data):
-            assert dat['set'] == dataset
-            assert dat['gt'] in allowed_gt
+            if i%100==0:
+                print('...loaded', i)
+            img_path = dat.img_path
+            gt = dat.gt
 
-            # get img path
-            img_path = dat['img_path']
-            # img_path = os.path.join('../../',img_path)
-            img_path = os.path.join('../',img_path)
-            # append img_path
-            self.img_path.append(img_path)
             # load img
             img = self.load_img(img_path, log= i <= 0)
 
-            # append img
-            self.img.append(img)
-            # append gt
-            gt = int(dat['gt'])
+            # append 
             self.ground_truth.append(gt)
-        print('loaded',len(self.img),len(self.img_path),len(self.ground_truth), dataset)
+            self.img_path.append(img_path)
+            self.img.append(img)
+        print(f'loaded {len(self.img)=} {len(self.img_path)=} {len(self.ground_truth)=} {dataset=}')
 
     def __len__(self):
         return len(self.ground_truth)
@@ -105,3 +119,13 @@ class Dataset_S1_1000(Dataset):
             'ground_truth': self.ground_truth[idx],
         }
         return ans
+
+def test():
+    dataset = DME_5k('training', test_mode=True)
+    dataset = DME_5k('validation', test_mode=True)
+    dataset = DME_5k('testing', test_mode=True)
+    print('passed')
+
+if __name__ == '__main__':
+    test()
+

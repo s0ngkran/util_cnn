@@ -2,13 +2,12 @@
 import torch
 import os
 import numpy as np
-import cv2
 import json
 import time
 import sys
 from torch.utils.data import DataLoader
 from model01 import VGG16 as Model
-from data01 import Dataset_S1_1000 as MyDataset
+from data01 import DME_5k as MyDataset
 import torch.nn.functional as F
 
 # from lossfunc_to_control_covered_F_score_idea import loss_func
@@ -33,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('-col', '--continue_last', help='continue at last epoch', action='store_true')
     parser.add_argument('-xx', '--xx', help='train with bootstrap', action='store_true')
     parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
+    parser.add_argument('-lr', '--learning_rate', help='learning_rate', type=int)
     args = parser.parse_args()
     print(args)
 
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     VALIDATION_JSON = JSON_PATTERN.replace('XXX', 'validation')
     BATCH_SIZE = 64 if args.batch_size == None else args.batch_size
     SAVE_EVERY = 1
-    LEARNING_RATE = 1e-4
+    LEARNING_RATE = 1e-4 if args.learning_rate == None else 10**args.learning_rate
     TRAINING_NAME = os.path.basename(__file__)
     N_WORKERS = args.n_worker if args.n_worker != None else 10
     LOG_FOLDER = 'log/'
@@ -53,6 +53,7 @@ if __name__ == '__main__':
     AMP_ENABLED = False
     TESTING_FOLDER = 'TESTING_FOLDER/'
     IS_TEST_MODE = args.test if args.test is not None else False
+    print('lr=', LEARNING_RATE)
 
     # continue training
     IS_CONTINUE = False if args.continue_save is None and args.continue_last == False else True
@@ -390,6 +391,14 @@ auto batch size -> 1
                 print('iter',iteration)
                 # if iteration > 10: break
             assert len(gt_list) == len(pred_list)
+            out = {
+                    'pred_list': pred_list,
+                    'gt_list': gt_list,
+                  }
+            write_json('result.json', out)
+            print('done')
+            1/0
+
             correct = 0
             fail = 0
             for gt, pr in zip(gt_list, pred_list):
@@ -403,6 +412,12 @@ auto batch size -> 1
             mAP = calculate_map(gt_list.numpy(), pred_list)
             print('mAP=',mAP)
             1/0 
+
+    def write_json(filename, out):
+        assert filename.endswith('.json')
+        with open(filename, 'w') as f:
+            json.dump(data, f)
+        print('writed', filename)
 
     def test_write():
         global model, global_loss
@@ -476,9 +491,6 @@ auto batch size -> 1
         if not IS_TEST_MODE:
             # print('fail')
             # break
-
-
-
             tr_loss = train()
             
             if epoch == 1 or epoch % SAVE_EVERY == 0 and not IS_TEST_MODE:
