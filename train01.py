@@ -1,4 +1,3 @@
-
 import torch
 import os
 import numpy as np
@@ -7,8 +6,8 @@ import json
 import time
 import sys
 from torch.utils.data import DataLoader
-from model01 import VGG16 as Model
-from data01 import Dataset_S1_1000 as MyDataset
+from model01 import ANNPipe as Model
+from data01 import TFSSingleHand as MyDataset
 import torch.nn.functional as F
 
 # from lossfunc_to_control_covered_F_score_idea import loss_func
@@ -23,6 +22,7 @@ if __name__ == '__main__':
     '''
 
     parser = ArgumentParser()
+    parser.add_argument('mode')
     parser.add_argument('-sh', '--show', help='show loss value on training and validation', action='store_true')
     parser.add_argument('-ck', '--check_run', help='run only first 50 sample', action='store_true') 
     parser.add_argument('-co', '--continue_save', help='continue at specific epoch', type=int) 
@@ -34,13 +34,14 @@ if __name__ == '__main__':
     parser.add_argument('-xx', '--xx', help='train with bootstrap', action='store_true')
     parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
     args = parser.parse_args()
+    assert args.mode in ['abs', 'rel']
     print(args)
 
     ############################ config ###################
-    JSON_PATTERN = 'XXX'
-    TRAINING_JSON = JSON_PATTERN.replace('XXX', 'training')
-    VALIDATION_JSON = JSON_PATTERN.replace('XXX', 'validation')
-    BATCH_SIZE = 64 if args.batch_size == None else args.batch_size
+    TRAINING_JSON = 'tr'
+    VALIDATION_JSON = 'va'
+    TESTING_JSON = 'te'
+    BATCH_SIZE = 32 if args.batch_size == None else args.batch_size
     SAVE_EVERY = 1
     LEARNING_RATE = 1e-4
     TRAINING_NAME = os.path.basename(__file__)
@@ -53,30 +54,12 @@ if __name__ == '__main__':
     AMP_ENABLED = False
     TESTING_FOLDER = 'TESTING_FOLDER/'
     IS_TEST_MODE = args.test if args.test is not None else False
+    IS_CONTINUE = args.continue_last 
 
-    # continue training
-    IS_CONTINUE = False if args.continue_save is None and args.continue_last == False else True
-    # CONTINUE_PATH = './save/train09.pyepoch0000003702.model'
-    if args.continue_last == False:
-        continue_epoch = args.continue_save
-        CONTINUE_PATH = './%s/%sepoch%s.model'%(SAVE_FOLDER, TRAINING_NAME,  str(continue_epoch).zfill(10))
-    else:
-        def find_last_epoch_path():
-            for _,_,fname_list in os.walk(SAVE_FOLDER):
-                print('walk')
-            
-            name_list = []
-            for fname in fname_list:
-                if fname.startswith(TRAINING_NAME):
-                    name_list.append(fname)
-            name_list.sort()
-            path = os.path.join(SAVE_FOLDER, name_list[-1])
-            return path
-        # CONTINUE_PATH = find_last_epoch_path()
-        CONTINUE_PATH = SAVE_FOLDER + TRAINING_NAME + 'last_epoch.model'
-        print('continue on last epoch')
-        print(CONTINUE_PATH)
-        print()
+    CONTINUE_PATH = SAVE_FOLDER + TRAINING_NAME + 'last_epoch.model'
+    print('continue on last epoch')
+    print(CONTINUE_PATH)
+    print()
 
     IS_CHANGE_LEARNING_RATE = False
     NEW_LEARNING_RATE = 1e-3
@@ -90,60 +73,18 @@ if __name__ == '__main__':
         ''')
         print('args.test',args.test)
         
-        # check type
-        try:
-            pass
-        except:
-            pass
-
-        # TESTING_JSON = JSON_PATTERN.replace('XXX', args.test[1]) if args.test is not None else 'nothing'
-        TESTING_JSON = 'testing'
-        print(TESTING_JSON,'-----as testing_set')
-        DEVICE = 'cpu'
-        # WEIGHT_PATH = './save/train09.pyepoch0000003702.model'
         WEIGHT_PATH = os.path.join('./save', __file__ + 'best_epoch.model')
         print('weight_path =', WEIGHT_PATH)
-
-    #if args.test is not None:
-    #    WEIGHT_PATH = './%s/%sepoch%s.model'%(SAVE_FOLDER, TRAINING_NAME, str(args.test[0]).zfill(10))
-    ############################################################
 
     print('starting...')
     for folder_name in [LOG_FOLDER, SAVE_FOLDER, TESTING_FOLDER]:
         if not os.path.exists(folder_name):
             os.mkdir(folder_name)
 
-    if not IS_TEST_MODE and AMP_ENABLED:
-        try:
-            # from apex.parallel import DistributedDataParallel as DDP
-            from apex.fp16_utils import *
-            from apex import amp, optimizers
-            # from apex.multi_tensor_apply import multi_tensor_applier
-            amp
-            print('success amp')
-        except ImportError:
-            raise ImportError(
-                "Please install apex from https://www.github.com/nvidia/apex to run this example.")
-
-    # manage batch
-    def my_collate(batch):
-        image_path, ground_truth, hand_landmarks = [],[],[]
-        for item in batch:
-            image_path.append(item['img_path'])
-            ground_truth.append(item['ground_truth'])
-            # hand_landmarks.append(item['hand_landmarks'])
-
-        ans = {
-            'img_path':image_path, 
-            'ground_truth':ground_truth, 
-            # 'hand_landmarks': hand_landmarks,
-        }
-        return ans
-    
     # load data
     if not IS_TEST_MODE:
-        training_set = MyDataset(TRAINING_JSON, test_mode=CHECK_RUN)
-        validation_set = MyDataset(VALIDATION_JSON, test_mode=CHECK_RUN)
+        training_set = MyDataset(TRAINING_JSON, args.mode, test_mode=CHECK_RUN)
+        validation_set = MyDataset(VALIDATION_JSON, args.mode, test_mode=CHECK_RUN)
         training_set_loader = DataLoader(training_set, batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=True, drop_last=True) #, collate_fn=my_collate)
         validation_set_loader = DataLoader(validation_set,  batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=False, drop_last=False)#, collate_fn=my_collate)
         print('tr set', len(training_set))
@@ -159,23 +100,21 @@ auto batch size -> 1
        
 
         ''')
-        BATCH_SIZE = 1
-        testing_set = MyDataset(TESTING_JSON, test_mode=CHECK_RUN)
+        testing_set = MyDataset(TESTING_JSON, args.mode, test_mode=CHECK_RUN)
         testing_set_loader = DataLoader(testing_set,  batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=False, drop_last=False)#, collate_fn=my_collate)
 
     if not IS_TEST_MODE:
-        model = Model().to('cuda')
+        model = Model(args.mode).to('cuda')
         optimizer = torch.optim.Adam(model.parameters())
         epoch = 0
         lowest_va_loss = 9999999999
     else:
-        model = Model()
+        model = Model(args.mode)
         epoch = 0
         lowest_va_loss = 9999999999
     
     # load state for amp
     if not IS_TEST_MODE:
-        print('here')
         if IS_CONTINUE:
             checkpoint = torch.load(CONTINUE_PATH)
             model.load_state_dict(checkpoint['model_state_dict'])
@@ -191,33 +130,11 @@ auto batch size -> 1
                 for param_group in optimizer.param_groups:
                     param_group['lr'] = learning_rate
         else:
-            if False:
-                # scale learning rate
-                print()
-                print()
-                print('scale learning rate')
-                print()
-                print()
-                print(len(training_set_loader), BATCH_SIZE, 'tr size, batch size')
-                update_per_epoch = len(training_set_loader)/BATCH_SIZE
-                print('upd', update_per_epoch)
-                learning_rate = LEARNING_RATE/update_per_epoch
-                for param_group in optimizer.param_groups:
-                    param_group['lr'] = learning_rate
-            else:
-                print('\n\nlearning rate =', LEARNING_RATE)
-                learning_rate = LEARNING_RATE
-
-
-        if AMP_ENABLED:
-            # init amp
-            print('initing... amp')
-            model, optimizer = amp.initialize(model, optimizer, opt_level=OPT_LEVEL)
+            print('\n\nlearning rate =', LEARNING_RATE)
+            learning_rate = LEARNING_RATE
     else:
         checkpoint = torch.load(WEIGHT_PATH, map_location=torch.device('cpu'))
         model.load_state_dict(checkpoint['model_state_dict'])
-
-
 
     # write loss value
     def write_loss_txt(epoch, tr, va):
@@ -264,11 +181,8 @@ auto batch size -> 1
         model.train()
         epoch += 1
         for iteration, dat in enumerate(training_set_loader):
-            if IS_BOOTSTRAP:
-                dat = get_first_random_from_loader(training_set_loader)
             iteration += 1
-            inp = dat['img'].cuda()
-            # inp = dat['img']
+            inp = dat['inp'].cuda()
             
             optimizer.zero_grad()
             output = model(inp)
@@ -279,11 +193,7 @@ auto batch size -> 1
             loss = loss_func(output, gt)
             if CHECK_RUN:
                 pass
-            if AMP_ENABLED:
-                with amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
-            else:
-                loss.backward()
+            loss.backward()
             optimizer.step()
 
         if CHECK_RUN:
@@ -380,16 +290,15 @@ auto batch size -> 1
             data = {}
             for iteration, dat in enumerate(testing_set_loader):
                 iteration += 1
-                inp = dat['img']
-                assert inp.shape[0] == 1
+                inp = dat['inp']
                 
                 output = model(inp) 
-                pred = output[0].numpy() # list of 11 elements
-                # print('pred', pred, 'type', type(pred))
-                pred_list.append(pred)
+                pred = [output[i].numpy() for i in range(len(output))]
+                pred_list = pred_list + pred
                 
                 gt = dat['ground_truth']
-                gt_list.append(int(gt[0]))
+                gt = [int(gt[i]) for i in range(len(gt))]
+                gt_list = gt_list + gt
                 print('iter',iteration, '/', n)
                 # if iteration > 10: break
             assert len(gt_list) == len(pred_list)
@@ -399,8 +308,6 @@ auto batch size -> 1
                   }
             # write_json('result.json', out)
             torch_save('result.pt', out)
-            print('done')
-            1/0
 
             correct = 0
             fail = 0
@@ -409,14 +316,12 @@ auto batch size -> 1
                 if gt == pr: correct += 1
                 else: fail += 1
             assert correct + fail == len(gt_list)
-            print('acc=', correct/len(gt_list))
-            gt_list = gen_one_hot(torch.tensor(gt_list))
-            pred_list = np.array(pred_list)
-            mAP = calculate_map(gt_list.numpy(), pred_list)
-            print('mAP=',mAP)
+            print('acc (not included no hand)=', correct/len(gt_list))
             1/0 
+
     def torch_save(filename, out):
         torch.save(out, filename)
+        print('saved', filename)
 
     def write_json(filename, out):
         assert filename.endswith('.json')
@@ -508,8 +413,6 @@ auto batch size -> 1
                     'model_state_dict': model.state_dict(),
                     'optimizer_state_dict': optimizer.state_dict(),
                 }
-                if AMP_ENABLED:
-                    d['amp_state_dict']= amp.state_dict()
                 torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'last_epoch.model')
 
 
@@ -532,5 +435,3 @@ running test function
 ''')
             test()
             break
-
-
