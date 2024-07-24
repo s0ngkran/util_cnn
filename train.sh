@@ -3,4 +3,4 @@ echo "start train..."
 echo
 echo "python train.py"
 
-python train01.py abs -b 8 -lr -10
+python train.py train_name -b 8 -lr -10

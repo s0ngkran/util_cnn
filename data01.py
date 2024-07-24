@@ -9,7 +9,7 @@ class Data:
     gt: str
     img_path: str
 
-class MyData(Dataset):
+class MyDataset(Dataset):
     def __init__(self, dataset, test_mode=False):
         assert dataset in ['tr', 'va', 'te']
         data = self.read_data()
@@ -37,25 +37,8 @@ class MyData(Dataset):
         path = os.path.join(root, 'gt.json')
         with open(path, 'r') as f:
             data = json.load(f)
-        keypoints = self.read_keypoints()
         
         out = []
-        no_kp = []
-        for k, dat in data.items():
-            s = SingleHand(root, dat['img_path'], dat['gt'], dat['set_name'])
-            if s.key not in keypoints: continue
-            kp = keypoints[s.key]
-            if len(kp) != 21:
-                no_kp.append(s.key)
-                continue
-            s.set_keypoint(kp, mode)
-            out.append(s)
-        
-        # verify all outs have keypoints
-        for o in out:
-            fixed = 20 if mode == 'rel' else 21
-            assert len(o.keypoints) == fixed, f'{len(o.keypoints)}'
-        
         print(f'{len(out)=} {len(no_kp)=}')
         return out
     def read_json(self, path):
@@ -68,7 +51,7 @@ class MyData(Dataset):
         return len(self.ground_truth)
 
 def test():
-    # data = TFSSingleHand('tr', 'abs')
+    # data = MyDataset('tr', 'abs')
     # print()
     # for d in data:
     #     print(d)
