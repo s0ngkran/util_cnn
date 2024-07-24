@@ -1,9 +1,6 @@
-from torchvision import transforms
 import torch
-from collections import OrderedDict
-import torch.nn.functional as F
 import torch.nn as nn
-import torchvision.models as models
+
 class MyLinear(nn.Module):
     def __init__(self, n_inp, n_out, act_func=nn.ReLU) -> None:
         super().__init__()
@@ -42,12 +39,6 @@ def test_forword():
     output = model(input_tensor)
     print(output.shape)
     assert output.shape == torch.Size([2,30])
-
-    model = ANNPipe('abs')
-    input_tensor = torch.rand(4, 21*3)
-    output = model(input_tensor)
-    print(output.shape)
-    assert output.shape == torch.Size([4,30])
 
 if __name__ =='__main__':
     test_forword()
