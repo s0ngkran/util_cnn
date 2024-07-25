@@ -63,6 +63,8 @@ class Model(nn.Module):
             nn.Linear(n_hidden2, n_out),
             nn.Sigmoid()
         )
+        
+
 
     def forward(self, x):
         x = self.vgg16(x)
@@ -71,12 +73,9 @@ class Model(nn.Module):
         return x
 
 
-def test_forword():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device, 'device')
+def test_forword(device):
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    model = Model()
-    model = model.to(device)
+    model = Model().to(device)
     inp_size = 360
     # input_tensor = torch.rand(5, 3, 64, 64).to(device)
     input_tensor = torch.rand(1, 3, inp_size, inp_size).to(device)
@@ -121,8 +120,8 @@ def test_with_loader():
         break
         
 if __name__ == '__main__':
-    # test_forword()
-    test_with_loader()
+    test_forword('cpu')
+    # test_with_loader()
     # Model(**{
     #     'no_drop': True
     # })
