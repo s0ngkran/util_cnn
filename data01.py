@@ -14,6 +14,15 @@ class Data:
     def __post_init__(self):
         root = '../poh_plain_vs_natural'
         self.img_path = os.path.join(root, self.img_path)
+        out = self.my_gt()
+        self.gt = out[self.gt]
+    def my_gt(self):
+        all_gt = ['A','B','C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']
+        out = {}
+        for i, gt in enumerate(all_gt):
+            out[gt] = i
+        return out
+
 
 class MyDataset(Dataset):
     def __init__(self, dataset, test_mode=False):
@@ -102,8 +111,10 @@ class MyDataset(Dataset):
 
 def test():
     data = MyDataset('tr')
+    dd = {}
     for d in data:
         print(d['inp'].shape, d['ground_truth'])
+        dd[d['ground_truth']] = 1
         break
     pass
 

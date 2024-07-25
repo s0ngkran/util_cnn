@@ -1,13 +1,13 @@
 import torch
 import os
 import sys
-sys.path.append('../..')
+sys.path.append('../')
 from sk_log import SKLogger
-import json
 import time
 from torch.utils.data import DataLoader
-from model01 import Model
+from model import Model
 from data01 import MyDataset
+from stopper import Stopper
 # import torch.nn.functional as F
 
 import torch.nn as nn
@@ -33,7 +33,6 @@ assert args.device in [None, 'cpu', 'cuda']
 ############################ config ###################
 TRAINING_JSON = 'tr'
 VALIDATION_JSON = 'va'
-TESTING_JSON = 'te'
 BATCH_SIZE = 16 if args.batch_size is None else args.batch_size
 SAVE_EVERY = 1
 LEARNING_RATE = 1e-4 if args.learning_rate is None else 10**args.learning_rate
@@ -44,10 +43,10 @@ SAVE_FOLDER = 'save/'
 CHECKING = args.checking
 AMP_ENABLED = False
 OPT_LEVEL = 'O2'
-IS_TEST_MODE = args.test if args.test is not None else False
 IS_CONTINUE = args.continue_last 
 DEVICE = 'cuda' if args.device is None else args.device
 NEW_LEARNING_RATE = None if args.new_learning_rate is None else 10**args.new_learning_rate
+print('training name:', TRAINING_NAME)
 
 def feed(dat):
     inp = dat['inp'].to(DEVICE)
@@ -74,6 +73,7 @@ print('batch size', BATCH_SIZE)
 assert len(training_set) >= BATCH_SIZE, 'please reduce batch size'
 
 model = Model().to(DEVICE)
+stopper = Stopper()
 optimizer = torch.optim.Adam(model.parameters())
 epoch = 0
 lowest_va_loss = 9999999999
@@ -90,6 +90,7 @@ if IS_CONTINUE:
     # amp.load_state_dict(checkpoint['amp_state_dict'])
     epoch = checkpoint['epoch']
     lowest_va_loss = checkpoint['lowest_va_loss']
+    stopper = Stopper(epoch=epoch, best_loss=lowest_va_loss)
     print('loaded epoch ->', epoch)
     if NEW_LEARNING_RATE is not None:
         print('change learning rate to 10**', NEW_LEARNING_RATE)
@@ -102,10 +103,7 @@ else:
     print('\n\nlearning rate =', LEARNING_RATE)
     learning_rate = LEARNING_RATE
 
-log = SKLogger(TRAINING_NAME)
-
-def write_loss(epoch, tr, va):
-    log.write(epoch, tr, va)
+log = SKLogger(TRAINING_NAME, root='/host')
 
 def train():
     global model, optimizer, epoch
@@ -162,31 +160,37 @@ def main():
     global lowest_va_loss
     # train
     while True:
-        if not IS_TEST_MODE:
-            # print('fail')
-            # break
-            tr_loss = train()
-            
-            if epoch == 1 or epoch % SAVE_EVERY == 0 and not IS_TEST_MODE:
-                d = {
-                    'lowest_va_loss': lowest_va_loss,
-                    'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                }
-                torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'last_epoch.model')
+        # print('fail')
+        # break
+        tr_losses = train()
+        
+        if epoch == 1 or epoch % SAVE_EVERY == 0:
+            d = {
+                'lowest_va_loss': lowest_va_loss,
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+            }
+            torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'last_epoch.model')
 
-                # validate if model is saved
-                va_loss = validation()
+            # validate if model is saved
+            va_losses = validation()
+            va_loss = avg(va_losses)
 
-                if va_loss < lowest_va_loss:
-                    # save best weight
-                    lowest_va_loss = va_loss
-                    torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'best_epoch.model')
-                    print('*** saved best ep=', epoch)
-                if CHECKING:
-                    print('* saved last ep', epoch)
-                write_loss(epoch, avg(tr_loss), avg(va_loss))
+            if va_loss < lowest_va_loss:
+                # save best weight
+                lowest_va_loss = va_loss
+                torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'best_epoch.model')
+                print('*** saved best ep=', epoch)
+            if CHECKING:
+                print('* saved last ep', epoch)
+            write_loss(epoch, avg(tr_losses), va_loss)
+            if stopper(va_loss):
+                print('breaked by stopper at ep', epoch)
+                break
+
+def write_loss(epoch, tr, va):
+    log.write(epoch, tr, va)
 
 if __name__ == '__main__':
     main()

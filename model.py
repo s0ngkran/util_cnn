@@ -3,7 +3,7 @@ import torchvision.models as models
 import os
 import torch
 
-class MyModel(nn.Module):
+class Model(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         model = models.vgg16(pretrained=True)
@@ -40,7 +40,7 @@ def test_forword():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device, 'device')
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    model = MyModel()
+    model = Model()
     model = model.to(device)
     inp_size = 360
     # input_tensor = torch.rand(5, 3, 64, 64).to(device)
@@ -76,7 +76,7 @@ def test_with_loader():
 
     dataset = MyDataset('tr', test_mode=True)
     dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
-    model = MyModel()
+    model = Model()
     model = model.to(device)
     for i, dat in enumerate(dataloader):
         img = dat['inp'].to(device)
