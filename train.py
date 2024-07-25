@@ -17,6 +17,11 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('name') 
+parser.add_argument('-nd', '--no_drop', action='store_true')
+parser.add_argument('--no_bn_dr', action='store_true')
+parser.add_argument('--train_all', action='store_true')
+parser.add_argument('-oo', '--out11', action='store_true')
+parser.add_argument('-na', '--no_aug', action='store_true')
 parser.add_argument('-ck', '--checking', help='run only first 50 sample', action='store_true') 
 parser.add_argument('-co', '--continue_save', help='continue at specific epoch', type=int) 
 parser.add_argument('-b', '--batch_size', help='set batch size', type=int) 
@@ -26,10 +31,20 @@ parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
 parser.add_argument('-d', '--device')
 parser.add_argument('-nlr', '--new_learning_rate',  type=int)
 parser.add_argument('-lr', '--learning_rate',  type=int)
+parser.add_argument('-s', '--stopper_min_ep',  type=int)
 args = parser.parse_args()
 print(args)
-assert args.device in [None, 'cpu', 'cuda']
 
+assert args.device in [None, 'cpu', 'cuda']
+model_kwargs = {
+    'no_drop': args.no_drop,
+    'out11': args.out11,
+    'no_bn_dr': args.no_bn_dr,
+    'train_all': args.train_all,
+}
+data_kwargs = {
+    'no_aug': args.no_aug,
+}
 ############################ config ###################
 TRAINING_JSON = 'tr'
 VALIDATION_JSON = 'va'
@@ -38,7 +53,6 @@ SAVE_EVERY = 1
 LEARNING_RATE = 1e-4 if args.learning_rate is None else 10**args.learning_rate
 TRAINING_NAME = args.name
 N_WORKERS = args.n_worker if args.n_worker is not None else 10
-LOG_FOLDER = 'log/'
 SAVE_FOLDER = 'save/'
 CHECKING = args.checking
 AMP_ENABLED = False
@@ -59,21 +73,21 @@ def feed(dat):
 ############################ config ###################
 
 print('starting...')
-for folder_name in [LOG_FOLDER, SAVE_FOLDER]:
+for folder_name in [SAVE_FOLDER]:
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
 
 # load data
-training_set = MyDataset(TRAINING_JSON, test_mode=CHECKING)
-validation_set = MyDataset(VALIDATION_JSON, test_mode=CHECKING)
+training_set = MyDataset(TRAINING_JSON, test_mode=CHECKING, **data_kwargs)
+validation_set = MyDataset(VALIDATION_JSON, test_mode=CHECKING, **data_kwargs)
 training_set_loader = DataLoader(training_set, batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=True, drop_last=True) #, collate_fn=my_collate)
 validation_set_loader = DataLoader(validation_set,  batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=False, drop_last=False)#, collate_fn=my_collate)
 print('tr set', len(training_set))
 print('batch size', BATCH_SIZE)
 assert len(training_set) >= BATCH_SIZE, 'please reduce batch size'
 
-model = Model().to(DEVICE)
-stopper = Stopper()
+model = Model(**model_kwargs).to(DEVICE)
+stopper = Stopper(min_epoch=args.stopper_min_ep)
 optimizer = torch.optim.Adam(model.parameters())
 epoch = 0
 lowest_va_loss = 9999999999
@@ -90,7 +104,7 @@ if IS_CONTINUE:
     # amp.load_state_dict(checkpoint['amp_state_dict'])
     epoch = checkpoint['epoch']
     lowest_va_loss = checkpoint['lowest_va_loss']
-    stopper = Stopper(epoch=epoch, best_loss=lowest_va_loss)
+    stopper = Stopper(epoch=epoch, best_loss=lowest_va_loss, min_epoch=args.stopper_min_ep)
     print('loaded epoch ->', epoch)
     if NEW_LEARNING_RATE is not None:
         print('change learning rate to 10**', NEW_LEARNING_RATE)
@@ -170,6 +184,7 @@ def main():
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
+                'train_params': str(args)
             }
             torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'last_epoch.model')
 

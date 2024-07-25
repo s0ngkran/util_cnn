@@ -10,9 +10,11 @@ from dataclasses import dataclass
 class Data:
     gt: str
     img_path: str
+    key: str = ''
     
     def __post_init__(self):
         root = '../poh_plain_vs_natural'
+        self.key = self.img_path.split('/')[-1]
         self.img_path = os.path.join(root, self.img_path)
         out = self.my_gt()
         self.gt = out[self.gt]
@@ -25,14 +27,17 @@ class Data:
 
 
 class MyDataset(Dataset):
-    def __init__(self, dataset, test_mode=False):
+    def __init__(self, dataset, test_mode=False, **kwargs):
         assert dataset in ['tr', 'va', 'te']
+        print('Data kwargs:',kwargs)
         dataset = {
             'tr': 'training',
             'va': 'validation',
             'te': 'testing'
         }[dataset]
+        self.dataset = dataset
         data = self.read_data(dataset)
+        self.no_aug = True if kwargs.get('no_aug') == True else False
 
         if test_mode:
             data = data[:100]
@@ -40,18 +45,22 @@ class MyDataset(Dataset):
             
         self.ground_truth = []
         self.img_path = []
+        self.key = []
         for i, dat in enumerate(data):
             self.ground_truth.append(dat.gt)
             self.img_path.append(dat.img_path)
+            self.key.append(dat.key)
         print(f'loaded {len(self.ground_truth)=}')
 
     def __getitem__(self, idx):
         path = self.img_path[idx]
         img = self.load_img(path)
         gt  =self.ground_truth[idx]
+        key = self.key[idx]
         ans = {
             'inp': img,
             'ground_truth': gt,
+            'key': key,
         }
         return ans
 
@@ -74,6 +83,11 @@ class MyDataset(Dataset):
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                               std=[0.229, 0.224, 0.225]),
         ])
+        if self.no_aug or self.dataset == 'testing':
+            preprocess = transforms.Compose([
+                transforms.Resize(img_size),
+                transforms.ToTensor(),
+            ])
         image_tensor = preprocess(image)
         if log:
             print('aft image size|min|max =', image_tensor.size(), image_tensor.min(), image_tensor.max())
@@ -110,7 +124,7 @@ class MyDataset(Dataset):
         return len(self.ground_truth)
 
 def test():
-    data = MyDataset('tr')
+    data = MyDataset('tr', **{'no_aug': True})
     dd = {}
     for d in data:
         print(d['inp'].shape, d['ground_truth'])

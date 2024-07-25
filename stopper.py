@@ -1,9 +1,9 @@
 class Stopper:
-    def __init__(self, epoch=0, min_epoch=100, best_loss=None):
+    def __init__(self, epoch=0, min_epoch=None, best_loss=None):
         self.epoch = epoch
         self.best_loss = best_loss
         self.counter = 0
-        self.min_epoch = min_epoch
+        self.min_epoch = 100 if min_epoch is None else min_epoch
 
     def __call__(self, val_loss):
         self.epoch += 1

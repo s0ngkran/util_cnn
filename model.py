@@ -4,18 +4,53 @@ import os
 import torch
 
 class Model(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, **kwargs) -> None:
         super().__init__()
-        model = models.vgg16(pretrained=True)
-        model = nn.Sequential(*list(model.children())[:-1])
-        for name, param in model.named_parameters():
-            param.requires_grad = False
+        print('Model kwargs:', kwargs)
+        if kwargs.get('train_all') == True:
+            print('train all layers of vgg')
+            model = models.vgg16()
+            model = nn.Sequential(*list(model.children())[:-1])
+        else:
+            print('load pretrained weight...')
+            model = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
+            model = nn.Sequential(*list(model.children())[:-1])
+            for name, param in model.named_parameters():
+                param.requires_grad = False
 
         self.vgg16 = model # last layer shape -> 512 x 7 x 7
 
         n_hidden1 = 2048
         n_hidden2 = 2048
-        n_out = 30
+        n_out = 11 if kwargs.get('out11') == True else 30
+        if kwargs.get('no_bn_dr') == True:
+            self.classifier = nn.Sequential(
+                nn.Linear(512 * 7 * 7, n_hidden1),
+                # nn.BatchNorm1d(n_hidden1),
+                nn.ReLU(inplace=True),
+                # nn.Dropout(),
+                nn.Linear(n_hidden1, n_hidden2),
+                # nn.BatchNorm1d(n_hidden2),
+                nn.ReLU(inplace=True),
+                # nn.Dropout(),
+                nn.Linear(n_hidden2, n_out),
+                nn.Sigmoid()
+            )
+            return
+        elif kwargs.get('no_drop') == True:
+            self.classifier = nn.Sequential(
+                nn.Linear(512 * 7 * 7, n_hidden1),
+                nn.BatchNorm1d(n_hidden1),
+                nn.ReLU(inplace=True),
+                # nn.Dropout(),
+                nn.Linear(n_hidden1, n_hidden2),
+                nn.BatchNorm1d(n_hidden2),
+                nn.ReLU(inplace=True),
+                # nn.Dropout(),
+                nn.Linear(n_hidden2, n_out),
+                nn.Sigmoid()
+            )
+            return
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, n_hidden1),
             nn.BatchNorm1d(n_hidden1),
@@ -88,4 +123,7 @@ def test_with_loader():
 if __name__ == '__main__':
     # test_forword()
     test_with_loader()
+    # Model(**{
+    #     'no_drop': True
+    # })
         
