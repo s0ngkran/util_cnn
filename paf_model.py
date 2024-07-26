@@ -3,39 +3,29 @@ import torch.nn as nn
 import torchvision.models as models
 import os
 import torch
-import math
 import time
 import torch.nn.functional as F
+from utils.paf_util import *
+from utils.gen_gt import *
 
-def make_standard_block(feat_in, feat_out, kernel, stride=1, padding=1, use_bn=True):
-    layers = []
-    layers += [nn.Conv2d(feat_in, feat_out, kernel, stride, padding)]
-    if use_bn:
-        layers += [nn.BatchNorm2d(feat_out, eps=1e-05, momentum=0.1, affine=True,
-                                  track_running_stats=True)]
-    layers += [nn.ReLU(inplace=True)]
-    return nn.Sequential(*layers)
-
-def init(model):
-    for m in model.modules():
-        if isinstance(m, nn.Conv2d):
-            n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-            m.weight.data.normal_(0, math.sqrt(2. / n))
-        elif isinstance(m, nn.BatchNorm2d):
-            m.weight.data.fill_(1)
-            m.bias.data.zero_()
 
 class PAF(nn.Module):
-    def __init__(self, backend=None, backend_outp_feats=128, n_joints=19, n_paf=36, n_stages=3):
+    def __init__(self, n_point=19, n_link=18, n_stage=3, img_size=720):
         super().__init__()
-        assert (n_stages > 0)
-        backend = VGG19() if backend is None else backend
-        self.backend = backend
-        stages = [Stage(backend_outp_feats, n_joints, n_paf, True)]
-        for i in range(n_stages - 1):
-            stages.append(Stage(backend_outp_feats, n_joints, n_paf, False))
+        assert (n_stage > 0)
+        n_paf = n_link * 2
+        self.img_size = img_size
+        self.n_joint = n_point
+        self.n_link = n_link
+        self.n_paf = n_paf
+        self.n_stage = n_stage
+        self.backend = VGG19() 
+        backend_outp_feats=128
+        stages = [Stage(backend_outp_feats, n_point, n_paf, True)]
+        for i in range(n_stage - 1):
+            stages.append(Stage(backend_outp_feats, n_point, n_paf, False))
         self.stages = nn.ModuleList(stages)
-        self.init_gt_generator()
+        self.gt_gen = None
 
     def forward(self, x):
         img_feats = self.backend(x)
@@ -49,173 +39,56 @@ class PAF(nn.Module):
             cur_feats = torch.cat([img_feats, heatmap_out, paf_out], 1)
         return heatmap_outs, paf_outs
     
-    def loss_func(self, pred, gt):
+    def cal_loss(self, pred, gt):
         heatmap_outs, paf_outs = pred
-        gts, gtl = gt
-        
         # scale up each out from 90 to 720 
         loss_point = 0
         loss_link = 0
-        for i in range(3):
-            # scale to 720
-            heatmaps = F.interpolate(heatmap_outs[i], size=(720, 720), mode='bilinear').cpu()
-            loss_point += F.mse_loss(heatmaps, gts)
+        n_stage = len(heatmap_outs)
+        n_batch = len(heatmap_outs[0])
+        size = (self.img_size, self.img_size)
+        for i in range(n_stage):
+            # scale to 720 (original size)
+            # t1 = time.time()
+            heatmaps = F.interpolate(heatmap_outs[i], size=size, mode='bilinear').cpu()
+            pafs = F.interpolate(paf_outs[i], size=size, mode='bilinear').cpu()
+            # t2 = time.time()
+            batch_gts = []
+            batch_gtl = []
+            for b in range(n_batch):
+                gts = gt[b][i][0]
+                gtl = gt[b][i][1]
+                batch_gts.append(gts)
+                batch_gtl.append(gtl)
+            batch_gts = torch.stack(batch_gts)
+            batch_gtl = torch.stack(batch_gtl)
+            # t3 = time.time()
+            loss_point += F.mse_loss(heatmaps, batch_gts)
+            loss_link += F.mse_loss(pafs, batch_gtl)
+            # t4 = time.time()
+        # print(t2-t1, 'interpolate')
+        # print(t3-t2, 'prepare gt')
+        # print(t4-t3, 'cal loss')
+        sum_loss = loss_point + loss_link
+        return sum_loss
 
-            pafs = F.interpolate(paf_outs[i], size=(720, 720), mode='bilinear').cpu()
-            loss_link += F.mse_loss(pafs, gtl)
-        return loss_point + loss_link
-
-    def init_gt_generator(self):
-        width, height, sigma = 720, 720, 11.6
-        self.gaussian = self._gen_gaussian_map(width, height, sigma)
-        
-    def _gen_gaussian_map(self, width, height, sigma):
-        x = torch.linspace(-width / 2, width / 2, width)
-        y = torch.linspace(-height / 2, height / 2, height)
-        xv, yv = torch.meshgrid(x, y, indexing='xy')
-        gaussian_map = torch.exp(-(xv ** 2 + yv ** 2) / (sigma ** 2))
-        # print(gaussian_map.shape) # == (width, hight)
-        return gaussian_map
-
-    def gen_gt(self, keypoint, link):
-        w, h = 720, 720
-        x_list = [k[0]*w for k in keypoint]
-        y_list = [k[1]*h for k in keypoint]
-        gts = self._gen_gts(x_list, y_list, self.gaussian_map)
-        gtl = self._gen_gtl(x_list, y_list, link)
-        return (gts, gtl)
-
-    def _gen_gts(self, x_list, y_list, big_gaussian_map):
-        w, h = 720, 720
-        tensor_gaussian_map = torch.zeros((len(x_list), h, w))
-        for i in range(len(x_list)):
-            # crop gaussian map by centering on keypoint
-            xi, yi = int(x_list[i]), int(y_list[i])
-            gaus = big_gaussian_map[h-yi:h*2 - yi, w-xi:w*2 - xi]
-            tensor_gaussian_map[i] = gaus
-        return tensor_gaussian_map
-
-    def _gen_gtl(self, x_list, y_list, links):
-        size = 720
-        gt_link = torch.zeros((len(links) * 2, size, size))
-        for j, link in enumerate(links):
-            # generate paf
-            p1 = np.array([x_list[link[0]], y_list[link[0]], 1])
-            p2 = np.array([x_list[link[1]], y_list[link[1]], 1])
-            paf = self._generate_paf(p1, p2, size, sigma_link)
-            gt_link[j * 2] = paf[0]
-            gt_link[j * 2 + 1] = paf[1]
-        return gt_link
-
-    def _generate_paf(self, p1, p2, size, sigma_link):
-        paf = np.zeros((2, size, size)) # (xy, 720, 720)
-        
-        if p1[2] > 0 and p2[2] > 0:  # Check visibility flags
-            diff = p2[:2] - p1[:2]
-            # convert to unit vector
-            norm = np.linalg.norm(diff)
-            # print()
-            # print(norm, 'norm')
-            # print(diff, 'diff')
-            
-            # if norm > 1e-6, then diff is not zero vector
-            if norm > 1e-6:
-                # unit vector
-                v = diff / norm
-                v_perpendicular = np.array([-v[1], v[0]])
-
-                # meshgrid
-                x, y = np.meshgrid(np.arange(size), np.arange(size))
-
-                dist_x = x - p1[0]
-                dist_y = y - p1[1]
-
-                dist_along = v[0] *  dist_x + v[1] * dist_y
-                dist_perpendicular = np.abs(v_perpendicular[0] * dist_x + v_perpendicular[1] * dist_y)
-                
-                # mask distance
-                mask1 = dist_along >= 0
-                mask2 = dist_along <= norm
-                mask3 = dist_perpendicular <= sigma_link
-                mask = mask1 & mask2 & mask3
-
-                # add unit vector to paf_x and paf_y
-                paf[0, mask] = v[0]
-                paf[1, mask] = v[1]
-        # convert to torch
-        paf = torch.tensor(paf)
-        return paf 
-
-class Stage(nn.Module):
-    def __init__(self, backend_outp_feats, n_joints, n_paf, stage1):
-        super(Stage, self).__init__()
-        inp_feats = backend_outp_feats
-        if stage1:
-            self.block1 = self.make_paf_block_stage1(inp_feats, n_joints)
-            self.block2 = self.make_paf_block_stage1(inp_feats, n_paf)
-        else:
-            inp_feats = backend_outp_feats + n_joints + n_paf
-            self.block1 = self.make_paf_block_stage2(inp_feats, n_joints)
-            self.block2 = self.make_paf_block_stage2(inp_feats, n_paf)
-        init(self.block1)
-        init(self.block2)
+    def init_gt_generator(self, img_size, sigma_points, links):
+        assert len(sigma_points) == self.n_stage
+        assert len(links) == self.n_link
+        self.gt_gen = GTGen(img_size, sigma_points, links)
+    def gen_gt(self, keypoint, sigma_points, sigma_links):
+        assert len(sigma_points) == self.n_stage
+        assert len(sigma_links) == self.n_stage
+        gt = self.gt_gen(keypoint, sigma_points, sigma_links)
+        return gt
 
 
-    def make_paf_block_stage1(self, inp_feats, output_feats):
-        layers = [make_standard_block(inp_feats, 128, 3),
-                  make_standard_block(128, 128, 3),
-                  make_standard_block(128, 128, 3),
-                  make_standard_block(128, 512, 1, 1, 0)]
-        layers += [nn.Conv2d(512, output_feats, 1, 1, 0)]
-        return nn.Sequential(*layers)
-
-
-    def make_paf_block_stage2(self, inp_feats, output_feats):
-        layers = [make_standard_block(inp_feats, 128, 7, 1, 3),
-                  make_standard_block(128, 128, 7, 1, 3),
-                  make_standard_block(128, 128, 7, 1, 3),
-                  make_standard_block(128, 128, 7, 1, 3),
-                  make_standard_block(128, 128, 7, 1, 3),
-                  make_standard_block(128, 128, 1, 1, 0)]
-        layers += [nn.Conv2d(128, output_feats, 1, 1, 0)]
-        return nn.Sequential(*layers)
-
-
-    def forward(self, x):
-        y1 = self.block1(x)
-        y2 = self.block2(x)
-        return y1, y2
-
-
-class VGG19(nn.Module):
-    def __init__(self, use_bn=True): 
-        # original no bn
-        super().__init__()
-        if use_bn:
-            vgg = models.vgg19(weights=models.VGG19_Weights.IMAGENET1K_V1)
-            layers_to_use = list(list(vgg.children())[0].children())[:23]
-        else:
-            vgg = models.vgg19_bn(pretrained=True)
-            layers_to_use = list(list(vgg.children())[0].children())[:33]
-        self.vgg = nn.Sequential(*layers_to_use)
-        self.feature_extractor = nn.Sequential(make_standard_block(512, 256, 3),
-                                               make_standard_block(256, 128, 3))
-        init(self.feature_extractor)
-
-    def forward(self, x):
-        x = self.vgg(x)
-        x = self.feature_extractor(x)
-        # print('out vgg', x.shape)
-        return x
-
-def test_forword(device):
+def test_forword(device='cuda'):
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    # model = VGG19()
     model = PAF().to(device)
-    inp_size = 128
-    inp_size = 720
-    # input_tensor = torch.rand(5, 3, 64, 64).to(device)
-    input_tensor = torch.rand(1, 3, inp_size, inp_size).to(device)
+    img_size = 128
+    img_size = 720
+    input_tensor = torch.rand(2, 3, img_size, img_size).to(device)
     print(input_tensor.shape, 'input tensor')
     output = model(input_tensor)
     if type(output) == tuple:
@@ -224,6 +97,42 @@ def test_forword(device):
             print('out shape',len(out))
             for o in out:
                 print(o.shape)
+
+def test_loss(device='cuda'):
+    os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+    model = PAF().to(device)
+    img_size = 128
+    img_size = 720
+
+    k = [(.2, .3) for i in range(19)]
+    keypoints = [k, k]
+    n_batch = len(keypoints)
+    sigma_points = [11.6, 11.6, 11.6]
+    sigma_links = [11.6, 11.6, 11.6]
+    links = [(0, 2) for i in range(18)]
+    model.init_gt_generator(img_size, sigma_points, links)
+    input_tensor = torch.rand(n_batch, 3, img_size, img_size).to(device)
+    print(input_tensor.shape, 'input tensor')
+    t1 = time.time()
+    pred = model(input_tensor)
+    t2 = time.time()
+    gt = model.gen_gt(keypoints, sigma_points, sigma_links)
+    t3 = time.time()
+    # assert n_batch == len(gt)
+    loss = model.cal_loss(pred, gt)
+    t4 = time.time()
+
+    print(t2-t1, 'pred')
+    print(t3-t2, 'gen gt')
+    print(t4-t3, 'cal loss')
+    print('loss', loss)
+    # 6.959 pred
+    # 0.142 gen gt
+    # 0.530 cal loss
+        # 0.107 interpolate
+        # 0.022 prepare gt
+        # 0.047 cal loss
+    # loss tensor(41.8182, grad_fn=<AddBackward0>)
         
 def test_with_loader():
     from data01 import Dataset_S1_1000_PAF
@@ -279,6 +188,7 @@ def test_with_loader():
 # torch.Size([5, 36, 90, 90]) paf_out shape
         
 if __name__ == '__main__':
-    test_forword('cpu')
+    # test_forword('cpu')
     # test_with_loader()
+    test_loss('cpu')
         
