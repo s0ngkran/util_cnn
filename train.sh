@@ -26,7 +26,7 @@ tr(){
     config=$1
     for i in $(seq $2 $3)
         do
-            python train.py $config_$i --config $config;
+            python train.py ${config}_$i --config $config;
         done
 }
 
@@ -41,9 +41,8 @@ tr_(){
 # curriculum learning -> change on each stage of model big2small | tr_p4, tr_p6, tr_p8
 
 # running
-# tr_ s64 0& bach
-# tr_ s64 2& bach
-# tr_ s128 0& bach
+# tr s64 0 2& # bach
+# tr s128 0 2& # bach
 
 tr_ s256 0& #mozart
 
