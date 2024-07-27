@@ -131,7 +131,9 @@ if IS_CONTINUE:
 else:
     learning_rate = LEARNING_RATE
 
-log = SKLogger(TRAINING_NAME, root='/host')
+
+log_root = '/host' if os.path.exists('/host') else None
+log = SKLogger(TRAINING_NAME, root=log_root)
 
 loaded_path = CONTINUE_PATH if IS_CONTINUE else None
 continue_ep = epoch if IS_CONTINUE else None
