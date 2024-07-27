@@ -77,8 +77,8 @@ for folder_name in [SAVE_FOLDER]:
         os.mkdir(folder_name)
 
 # load data
-training_set = MyDataset(TRAINING_JSON, test_mode=CHECKING, **data_kwargs)
-validation_set = MyDataset(VALIDATION_JSON, test_mode=CHECKING, **data_kwargs)
+training_set = MyDataset(TRAINING_JSON, img_size, test_mode=CHECKING, **data_kwargs)
+validation_set = MyDataset(VALIDATION_JSON, img_size, test_mode=CHECKING, **data_kwargs)
 training_set_loader = DataLoader(training_set, batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=True, drop_last=True) #, collate_fn=my_collate)
 validation_set_loader = DataLoader(validation_set,  batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=False, drop_last=False)#, collate_fn=my_collate)
 print('tr set', len(training_set))
@@ -109,6 +109,7 @@ if IS_CONTINUE:
     # amp.load_state_dict(checkpoint['amp_state_dict'])
     epoch = checkpoint['epoch']
     lowest_va_loss = checkpoint['lowest_va_loss']
+    last_train_params = checkpoint['train_params']
     stopper = Stopper(epoch=epoch, best_loss=lowest_va_loss, min_epoch=args.stopper_min_ep)
     print('loaded epoch ->', epoch)
     if NEW_LEARNING_RATE is not None:
@@ -168,9 +169,19 @@ def validation():
             print('ep', epoch, '-----------va- %.6f'%losses)
         return losses
 
-def torch_save(filename, out):
-    torch.save(out, filename)
-    print('saved', filename)
+def save_model(name):
+    d = {
+        'lowest_va_loss': lowest_va_loss,
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'train_params': [str(args)]
+    }
+    if IS_CONTINUE:
+        last_train_params.append(str(args))
+        d['train_params'] = last_train_params
+    path = os.path.join(SAVE_FOLDER, TRAINING_NAME, name)
+    torch.save(d, path)
     
 def avg(losses: list):
     return sum(losses) / len(losses)
@@ -184,14 +195,7 @@ def main():
         tr_losses = train()
         
         if epoch == 1 or epoch % SAVE_EVERY == 0:
-            d = {
-                'lowest_va_loss': lowest_va_loss,
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'train_params': str(args)
-            }
-            torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'last_epoch.model')
+            save_model('.last')
 
             # validate if model is saved
             va_losses = validation()
@@ -200,7 +204,7 @@ def main():
             if va_loss < lowest_va_loss:
                 # save best weight
                 lowest_va_loss = va_loss
-                torch.save(d, SAVE_FOLDER + TRAINING_NAME + 'best_epoch.model')
+                save_model('.best')
                 print('*** saved best ep=', epoch)
             if CHECKING:
                 print('* saved last ep', epoch)

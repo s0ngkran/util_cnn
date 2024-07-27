@@ -46,7 +46,10 @@ class PAF(nn.Module):
         return heatmap_outs, paf_outs
     
     def cal_loss(self, pred, gt):
+        t11 = time.time()
         gt = self.gen_gt(gt)
+        t12 = time.time()
+        print(t12-t11, 'gen gt')
         heatmap_outs, paf_outs = pred
         # scale up each out from 90 to 720 
         loss_point = 0
@@ -56,10 +59,10 @@ class PAF(nn.Module):
         size = (self.img_size, self.img_size)
         for i in range(n_stage):
             # scale to 720 (original size)
-            # t1 = time.time()
+            t1 = time.time()
             heatmaps = F.interpolate(heatmap_outs[i], size=size, mode='bilinear').cpu()
             pafs = F.interpolate(paf_outs[i], size=size, mode='bilinear').cpu()
-            # t2 = time.time()
+            t2 = time.time()
             batch_gts = []
             batch_gtl = []
             for b in range(n_batch):
@@ -74,13 +77,13 @@ class PAF(nn.Module):
             # print(pafs.shape, 'paf')
             # print(batch_gts.shape, 'gts')
             # print(batch_gtl.shape, 'gtl')
-            # t3 = time.time()
+            t3 = time.time()
             loss_point += F.mse_loss(heatmaps, batch_gts)
             loss_link += F.mse_loss(pafs, batch_gtl)
-            # t4 = time.time()
-        # print(t2-t1, 'interpolate')
-        # print(t3-t2, 'prepare gt')
-        # print(t4-t3, 'cal loss')
+            t4 = time.time()
+        print(t2-t1, 'interpolate')
+        print(t3-t2, 'prepare gt')
+        print(t4-t3, 'cal loss')
         sum_loss = loss_point + loss_link
         return sum_loss
 
@@ -91,7 +94,7 @@ class PAF(nn.Module):
         return gt_gen
         
     def gen_gt(self, keypoint):
-        gt = self.gt_gen(keypoint)
+        gt = self.gt_gen.time(keypoint)
         return gt
 
 
@@ -159,14 +162,22 @@ def test_with_loader(device='cuda'):
         return ans
     '''
     for i, dat in enumerate(dataloader):
-        img = dat['inp'].to(device)
-        print(img.shape, 'inp shape from loader')
 
+        t0 = time.time()
+        img = dat['inp'].to(device)
+
+        t1 = time.time()
         pred = model(img)
+        t2 = time.time()
         keypoint = dat['keypoint']
         loss = model.cal_loss(pred, keypoint)
+        t3 = time.time()
         print(loss, 'loss')
         break
+    print(img.shape, 'inp shape from loader')
+    print(t1-t0, 'load inp')
+    print(t2-t1, 'pred')
+    print(t3-t2, 'cal loss')
 
     def save_img(gt):
         gt = loss
@@ -205,5 +216,5 @@ def test_with_loader(device='cuda'):
 if __name__ == '__main__':
     # test_forword('cpu')
     # test_loss('cpu')
-    test_with_loader('cpu')
+    test_with_loader('cuda')
         
