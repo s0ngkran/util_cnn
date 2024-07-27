@@ -8,6 +8,7 @@ from torchvision.transforms.functional import to_pil_image
 import torch.nn.functional as F
 from utils.paf_util import *
 from utils.gen_gt import *
+from utils.cuda import *
 
 
 class PAF(nn.Module):
@@ -169,22 +170,33 @@ def test_with_loader(device='cuda'):
         }
         return ans
     '''
+    t = []
+    m = []
     for i, dat in enumerate(dataloader):
+        t0 = time.time()
         img = dat['inp'].to(device)
         keypoint = dat['keypoint']
-        print(img.shape, 'inp shape from loader')
+        # print(img.shape, 'inp shape from loader')
 
         pred = model(img)
+        # del img
+        # torch.cuda.empty_cache()
         t1 = time.time()
         device = 'cuda'
         loss = model.cal_loss(pred, keypoint, device)
         t2 = time.time()
         loss.backward()
         t3 = time.time()
-        print(loss, 'loss', )
-        print(t2-t1, 'time loss', device)
-        print(t3-t2, 'time backward', device)
-        break
+        # print(loss, 'loss', )
+        # print(t2-t1, 'time loss', device)
+        # print(t3-t2, 'time backward', device)
+        t.append(t3-t0)
+        # mem = get_gpu_memory_info()
+        # m.append(mem)
+        if i > 2:
+            break
+    print(sum(t), 'sum', device)
+    print(m)
 
     def save_img(gt):
         gt = loss

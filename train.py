@@ -180,7 +180,6 @@ def train(profile=False):
         print(t2-t0, 'one ep time')
 
     if CHECKING:
-        print('ep', epoch, 'loss',loss.item())
         print('''
         ################################
         #                              #
@@ -190,7 +189,7 @@ def train(profile=False):
         #                              #
         ################################
         ''')
-        print('ep', epoch, '---loss- %.6f'%loss.item())
+        print('ep', epoch, '---loss- %.6f'%loss)
     return loss
 
 def val_feed():
@@ -207,9 +206,8 @@ def val_feed():
 
     loss = avg(losses)
     if CHECKING:
-        print('va loss', loss)
+        print('ep', epoch, '-----------va- %.6f'%loss)
         time.sleep(0.3)
-        print('ep', epoch, '-----------va- %.6f'%losses)
     return loss
 
 def validation(tr_loss, profile=False):
@@ -240,6 +238,8 @@ def validation(tr_loss, profile=False):
     if profile:
         print(t4-t3, 'val_feed()')
         print(t2-t1, 'save_model()')
+    write_loss(epoch, tr_loss, va_loss)
+    return va_loss
 
 def save_model(label):
     d = {
@@ -269,12 +269,12 @@ def main():
         # break
         tr_loss = train(profile)
         va_loss = validation(tr_loss, profile)
-        if profile:
-            break
-        write_loss(epoch, tr_loss, va_loss)
+        if CHECKING: break
+        if profile: break
         if stopper(va_loss):
             print('breaked by stopper at ep', epoch)
             break
+    print('done')
 
 def write_loss(epoch, tr, va):
     log.write(epoch, tr, va)
