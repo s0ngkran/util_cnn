@@ -66,7 +66,8 @@ class VGG19(nn.Module):
         # original no bn
         super().__init__()
         if use_bn:
-            vgg = models.vgg19(weights=models.VGG19_Weights.IMAGENET1K_V1)
+            # vgg = models.vgg19(weights=models.VGG19_Weights.IMAGENET1K_V1)
+            vgg = models.vgg19(pretrained=True)
             layers_to_use = list(list(vgg.children())[0].children())[:23]
         else:
             vgg = models.vgg19_bn(pretrained=True)
