@@ -27,7 +27,6 @@ class Data:
 class MyDataset(Dataset):
     def __init__(self, dataset, img_size, test_mode=False, **kwargs):
         assert dataset in ['tr', 'va', 'te']
-        print('Data kwargs:',kwargs)
         self.dataset = dataset
         self.img_size = img_size
         data = self.read_data(dataset)
@@ -120,16 +119,17 @@ class MyDataset(Dataset):
             img_path = v['img_path']
             gt = int(v['gt'])
             keypoint = v['keypoint']
-            dataset = v['set']
-            d = Data(ind, img_path, gt, keypoint, dataset)
+            s = v['set']
+            d = Data(ind, img_path, gt, keypoint, s)
             out.append(d)
         n = len(out)
         out = [d for d in out if d.dataset == dataset]
 
+        print()
+        print(f'{dataset} = {len(out)}/{n}')
         print('example data:')
         print(out[0])
         print()
-        print(f'{dataset} = {len(out)}/{n}')
         return out
 
     def read_json(self, path):
@@ -155,11 +155,10 @@ class MyDataset(Dataset):
 
 def test():
     img_size = 360
-    data = MyDataset('tr', img_size)
+    data = MyDataset('va', img_size)
     dd = {}
     for d in data:
-        print(d['inp'].shape, d['ground_truth'])
-        dd[d['ground_truth']] = 1
+        print(d['inp'].shape)
         break
     pass
 

@@ -12,9 +12,9 @@ from utils.gen_gt import *
 
 class PAF(nn.Module):
     def __init__(self, sigma_points, sigma_links, links, n_point=19, n_link=18, n_stage=3, img_size=720, **kw):
-        print('in paf\n\n')
         super().__init__()
         self.sigma_points = sigma_points
+        self.sigma_links = sigma_links
         self.links = links
         n_paf = n_link * 2
         self.img_size = img_size
@@ -34,6 +34,16 @@ class PAF(nn.Module):
         self.stages = nn.ModuleList(stages)
         self.gt_gen = self.init_gt_generator(img_size, sigma_points, sigma_links, links)
 
+    def __str__(self):
+        txt = ['PAF model']
+        txt.append(f'n_joint={self.n_joint}')
+        txt.append(f'n_link={self.n_link}')
+        txt.append(f'n_stage={self.n_stage}')
+        txt.append(f'sig_point={self.sigma_points}')
+        txt.append(f'sig_link={self.sigma_links}')
+        txt = ' '.join(txt)
+        return txt
+
     def forward(self, x):
         img_feats = self.backend(x)
         cur_feats = img_feats
@@ -46,7 +56,7 @@ class PAF(nn.Module):
             cur_feats = torch.cat([img_feats, heatmap_out, paf_out], 1)
         return heatmap_outs, paf_outs
     
-    def cal_loss(self, pred, gt):
+    def cal_loss(self, pred, gt, device='cuda'):
         gt = self.gen_gt(gt)
         heatmap_outs, paf_outs = pred
         # scale up each out from 90 to 720 
@@ -58,8 +68,8 @@ class PAF(nn.Module):
         for i in range(n_stage):
             # scale to 720 (original size)
             # t1 = time.time()
-            heatmaps = F.interpolate(heatmap_outs[i], size=size, mode='bilinear').cpu()
-            pafs = F.interpolate(paf_outs[i], size=size, mode='bilinear').cpu()
+            heatmaps = F.interpolate(heatmap_outs[i], size=size, mode='bilinear').to(device)
+            pafs = F.interpolate(paf_outs[i], size=size, mode='bilinear').to(device)
             # t2 = time.time()
             batch_gts = []
             batch_gtl = []
@@ -68,8 +78,8 @@ class PAF(nn.Module):
                 gtl = gt[b][i][1]
                 batch_gts.append(gts)
                 batch_gtl.append(gtl)
-            batch_gts = torch.stack(batch_gts)
-            batch_gtl = torch.stack(batch_gtl)
+            batch_gts = torch.stack(batch_gts).to(device)
+            batch_gtl = torch.stack(batch_gtl).to(device)
 
             # print(heatmaps.shape, 'heat')
             # print(pafs.shape, 'paf')
@@ -126,7 +136,7 @@ def test_loss(device='cuda'):
     input_tensor = torch.rand(n_batch, 3, img_size, img_size).to(device)
     print(input_tensor.shape, 'input tensor')
     pred = model(input_tensor)
-    loss = model.cal_loss(pred, keypoints)
+    loss = model.cal_loss(pred, keypoints, 'cpu')
     print('loss', loss)
     # 6.959 pred
     # 0.142 gen gt
@@ -165,8 +175,15 @@ def test_with_loader(device='cuda'):
         print(img.shape, 'inp shape from loader')
 
         pred = model(img)
-        loss = model.cal_loss(pred, keypoint)
-        print(loss, 'loss')
+        t1 = time.time()
+        device = 'cuda'
+        loss = model.cal_loss(pred, keypoint, device)
+        t2 = time.time()
+        loss.backward()
+        t3 = time.time()
+        print(loss, 'loss', )
+        print(t2-t1, 'time loss', device)
+        print(t3-t2, 'time backward', device)
         break
 
     def save_img(gt):
@@ -209,6 +226,6 @@ class Model(PAF):
         
 if __name__ == '__main__':
     # test_forword('cpu')
-    # test_loss('cpu')
-    test_with_loader('cpu')
+    # test_loss('cuda')
+    test_with_loader('cuda')
         

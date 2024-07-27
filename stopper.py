@@ -3,7 +3,7 @@ class Stopper:
         self.epoch = epoch
         self.best_loss = best_loss
         self.counter = 0
-        self.min_epoch = 20 if min_epoch is None else min_epoch
+        self.min_epoch = 100 if min_epoch is None else min_epoch
 
     def __call__(self, val_loss):
         self.epoch += 1
@@ -20,6 +20,9 @@ class Stopper:
             self.best_loss = val_loss
             self.counter = 0
         return False
+    def __str__(self):
+        return f'Stopper({self.counter}) min={self.min_epoch} ep={self.epoch} best={self.best_loss}'
+    
 
 def test():
     stop = Stopper(epoch=200)

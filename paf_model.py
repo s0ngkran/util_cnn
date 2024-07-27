@@ -33,6 +33,16 @@ class PAF(nn.Module):
         self.stages = nn.ModuleList(stages)
         self.gt_gen = self.init_gt_generator(img_size, sigma_points, sigma_links, links)
 
+    def __str__(self):
+        txt = ['PAF model']
+        txt.append(f'n_joint={self.n_joint}')
+        txt.append(f'n_link={self.n_link}')
+        txt.append(f'n_stage={self.n_stage}')
+        txt.append(f'sig_point={self.sigma_points}')
+        txt.append(f'sig_link={self.sigma_links}')
+        txt = ' '.join(txt)
+        return txt
+
     def forward(self, x):
         img_feats = self.backend(x)
         cur_feats = img_feats
