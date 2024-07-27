@@ -46,15 +46,4 @@ tr s128 0 2& # bach
 
 # tr_ s256 0& #mozart
 
-# wait_gpu 10;
-# tr_ s256 1;
-# wait_gpu 10;
-# tr_ s256 2;
-# wait_gpu 10;
-# tr_ s256 3;
-# wait_gpu 10;
-# tr_ s256 4;
-# wait_gpu 10;
-# tr_ s256 5;
-# wait_gpu 10;
-# tr_ s256 6;
+

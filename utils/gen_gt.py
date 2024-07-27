@@ -79,7 +79,7 @@ class GTGen:
         x = torch.linspace(-width / 2, width / 2, width)
         y = torch.linspace(-height / 2, height / 2, height)
         # already add indexing but the WARNING still remains
-        xv, yv = torch.meshgrid(x, y, indexing='ij')
+        xv, yv = torch.meshgrid(x, y)
         gaussian_map = torch.exp(-(xv ** 2 + yv ** 2) / (sigma ** 2))
         # print(gaussian_map.shape) # == (width, hight)
         return gaussian_map
