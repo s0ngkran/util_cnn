@@ -1,10 +1,15 @@
 import torch
-import matplotlib.pyplot as plt
+import time
+try:
+    import matplotlib.pyplot as plt
+except:
+    pass
 
 class GTGen:
-    def __init__(self, img_size, sigma_points, sigma_links, links):
+    def __init__(self, img_size, sigma_points, sigma_links, links, n_keypoint=19):
         self.img_size = img_size
         self.links = links
+        self.n_keypoint = n_keypoint
         self.sigma_points = sigma_points
         self.sigma_links = sigma_links
         gaussian_size = img_size *2
@@ -20,9 +25,21 @@ class GTGen:
         keypoints = self._handle_keypoint_batch(keypoints)
         batch = []
         for keypoint in keypoints:
-            assert len(keypoint) == 19, f'{len(keypoint)}'
             gt_list = self._gen_one_img(keypoint)
             batch.append(gt_list)
+        return batch
+    def time(self, keypoints):
+        t1 = time.time()
+        keypoints = self._handle_keypoint_batch(keypoints)
+        t2 = time.time()
+        batch = []
+        for keypoint in keypoints:
+            assert len(keypoint) == self.n_keypoint, f'{len(keypoint)}'
+            gt_list = self._gen_one_img(keypoint)
+            batch.append(gt_list)
+        t3 = time.time()
+        print(t2-t1, 'handle keypoint')
+        print(t3-t2, 'gen gt')
         return batch
 
     def _handle_keypoint_batch(self, keypoints):
