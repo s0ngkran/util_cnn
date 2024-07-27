@@ -42,8 +42,7 @@ tr_(){
 
 # running
 # tr_ s64 0& bach
-# tr_ s64 2& bach
-# tr_ s128 0& bach
+tr_ s128 0& bach
 
 # tr_ s256 0& #mozart
 

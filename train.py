@@ -65,7 +65,6 @@ DEVICE = 'cuda' if args.device is None else args.device
 NEW_LEARNING_RATE = None if args.new_learning_rate is None else 10**args.new_learning_rate
 MIN_STOP = 20 if args.stopper_min_ep is None else args.stopper_min_ep
 print('training name:', TRAINING_NAME)
-1/0
 
 def feed(dat):
     inp = dat['inp'].to(DEVICE)
