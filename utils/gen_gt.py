@@ -2,9 +2,11 @@ import torch
 import matplotlib.pyplot as plt
 
 class GTGen:
-    def __init__(self, img_size, sigma_points, links):
+    def __init__(self, img_size, sigma_points, sigma_links, links):
         self.img_size = img_size
         self.links = links
+        self.sigma_points = sigma_points
+        self.sigma_links = sigma_links
         gaussian_size = img_size *2
         big_gaussians = {}
         for sigma_point in sigma_points:
@@ -14,20 +16,37 @@ class GTGen:
             big_gaussians[str(sigma_point)] = m
         self.big_gaussians = big_gaussians
     
-    def __call__(self, keypoints, sigma_points, sigma_links):
+    def __call__(self, keypoints):
+        keypoints = self._handle_keypoint_batch(keypoints)
         batch = []
         for keypoint in keypoints:
-            gt_list = self._gen_one_img(keypoint, sigma_points, sigma_links)
+            assert len(keypoint) == 19, f'{len(keypoint)}'
+            gt_list = self._gen_one_img(keypoint)
             batch.append(gt_list)
         return batch
 
-    def _gen_one_img(self, keypoint, sigma_points, sigma_links):
+    def _handle_keypoint_batch(self, keypoints):
+        n_batch = len(keypoints[0][0])
+        n_keypoint = len(keypoints)
+        # print('keypoint1')
+        # print(len(keypoints), len(keypoints[0]), len(keypoints[0][0]))
+        # 19 2 5
+        kps = torch.zeros(n_batch, n_keypoint, 2)
+        for i, k in enumerate(keypoints):
+            x, y = k
+            for b in range(n_batch):
+                kps[b, i, 0] = x[b]
+                kps[b, i, 1] = y[b]
+        return kps
+
+
+    def _gen_one_img(self, keypoint):
         size = self.img_size
         x_list = [k[0]*size for k in keypoint]
         y_list = [k[1]*size for k in keypoint]
         xy = x_list, y_list
         gt_list = []
-        for sp, sl in zip(sigma_points, sigma_links):
+        for sp, sl in zip(self.sigma_points, self.sigma_links):
             gt = self._gen_one_size(sp, xy, sl)
             # shape (n_kp, 720, 720)
             gt_list.append(gt)
@@ -43,7 +62,7 @@ class GTGen:
         x = torch.linspace(-width / 2, width / 2, width)
         y = torch.linspace(-height / 2, height / 2, height)
         # already add indexing but the WARNING still remains
-        xv, yv = torch.meshgrid(x, y, indexing='xy')
+        xv, yv = torch.meshgrid(x, y, indexing='ij')
         gaussian_map = torch.exp(-(xv ** 2 + yv ** 2) / (sigma ** 2))
         # print(gaussian_map.shape) # == (width, hight)
         return gaussian_map
@@ -64,13 +83,13 @@ class GTGen:
         links = self.links
         size = self.img_size
         gt_link = torch.zeros((len(links) * 2, size, size))
-        for j, link in enumerate(links):
+        for i, (p1, p2) in enumerate(links):
             # generate paf
-            p1 = torch.tensor([x_list[link[0]], y_list[link[0]], 1])
-            p2 = torch.tensor([x_list[link[1]], y_list[link[1]], 1])
+            p1 = torch.tensor([y_list[p1], x_list[p1], 1])
+            p2 = torch.tensor([y_list[p2], x_list[p2], 1])
             paf = self._generate_paf(p1, p2, size, sigma_link)
-            gt_link[j * 2] = paf[0]
-            gt_link[j * 2 + 1] = paf[1]
+            gt_link[i * 2] = paf[0]
+            gt_link[i * 2 + 1] = paf[1]
         return gt_link
 
     def _generate_paf(self, p1, p2, size, sigma_link):

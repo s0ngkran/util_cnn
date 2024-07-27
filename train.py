@@ -13,15 +13,13 @@ from stopper import Stopper
 import torch.nn as nn
 loss_func = nn.CrossEntropyLoss()
 from argparse import ArgumentParser
+from config import config
 
 
 parser = ArgumentParser()
 parser.add_argument('name') 
-parser.add_argument('-nd', '--no_drop', action='store_true')
-parser.add_argument('--no_bn_dr', action='store_true')
-parser.add_argument('--train_all', action='store_true')
-parser.add_argument('-oo', '--out11', action='store_true')
-parser.add_argument('-na', '--no_aug', action='store_true')
+parser.add_argument('--config')
+#
 parser.add_argument('-ck', '--checking', help='run only first 50 sample', action='store_true') 
 parser.add_argument('-co', '--continue_save', help='continue at specific epoch', type=int) 
 parser.add_argument('-b', '--batch_size', help='set batch size', type=int) 
@@ -35,20 +33,22 @@ parser.add_argument('-s', '--stopper_min_ep',  type=int)
 args = parser.parse_args()
 print(args)
 
+training = config()
+assert args.config in training.keys()
+training = training[args.config]
+sigma_points = training.get('sigma_points')
+sigma_links = training.get('sigma_links')
+img_size = training.get('img_size')
+
 assert args.device in [None, 'cpu', 'cuda']
 model_kwargs = {
-    'no_drop': args.no_drop,
-    'out11': args.out11,
-    'no_bn_dr': args.no_bn_dr,
-    'train_all': args.train_all,
 }
 data_kwargs = {
-    'no_aug': args.no_aug,
 }
 ############################ config ###################
 TRAINING_JSON = 'tr'
 VALIDATION_JSON = 'va'
-BATCH_SIZE = 16 if args.batch_size is None else args.batch_size
+BATCH_SIZE = 5 if args.batch_size is None else args.batch_size
 SAVE_EVERY = 1
 LEARNING_RATE = 1e-4 if args.learning_rate is None else 10**args.learning_rate
 TRAINING_NAME = args.name
@@ -64,11 +64,10 @@ print('training name:', TRAINING_NAME)
 
 def feed(dat):
     inp = dat['inp'].to(DEVICE)
-    gt = dat['ground_truth']
+    keypoint = dat['keypoint']
     optimizer.zero_grad()
     output = model(inp)
-    gt = torch.tensor([int(i) for i in gt], dtype=torch.long).cuda()
-    loss = loss_func(output, gt)
+    loss = model.cal_loss(output, keypoint)
     return loss
 ############################ config ###################
 
@@ -86,7 +85,13 @@ print('tr set', len(training_set))
 print('batch size', BATCH_SIZE)
 assert len(training_set) >= BATCH_SIZE, 'please reduce batch size'
 
-model = Model(**model_kwargs).to(DEVICE)
+links = MyDataset.get_link()
+model = Model(
+    sigma_points,
+    sigma_links,
+    links,
+    img_size=img_size,
+    **model_kwargs).to(DEVICE)
 stopper = Stopper(min_epoch=args.stopper_min_ep)
 optimizer = torch.optim.Adam(model.parameters())
 epoch = 0
