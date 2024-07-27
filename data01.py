@@ -1,9 +1,11 @@
 from torch.utils.data import Dataset
 import os
+import time
 import json
 from PIL import Image
 from torchvision import transforms 
 from dataclasses import dataclass
+from torch.utils.data import DataLoader
 
 @dataclass 
 class Data:
@@ -156,11 +158,26 @@ class MyDataset(Dataset):
 def test():
     img_size = 360
     data = MyDataset('va', img_size)
-    dd = {}
     for d in data:
-        print(d['inp'].shape)
+        d = d['inp'].shape
+        print(d)
         break
-    pass
+
+    times = []
+    for i in range(1,10,2):
+        print(i)
+        t1 = time.time()
+        loader = DataLoader(data, batch_size=5, num_workers=i)
+        for d in loader:
+            d  =d['inp'].shape
+            # print(d)
+            continue
+        t2 = time.time()
+        t = t2-t1
+        times.append((i, t))
+
+    for i, t in times:
+        print(i, t)
 
 if __name__ == "__main__":
     test()

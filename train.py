@@ -55,7 +55,7 @@ BATCH_SIZE = 5 if args.batch_size is None else args.batch_size
 SAVE_EVERY = 1
 LEARNING_RATE = 1e-4 if args.learning_rate is None else 10**args.learning_rate
 TRAINING_NAME = args.name
-N_WORKERS = args.n_worker if args.n_worker is not None else 5
+N_WORKERS = 10 if args.n_worker is None else args.n_worker
 SAVE_FOLDER = 'save/'
 CHECKING = args.checking
 AMP_ENABLED = False
@@ -65,6 +65,7 @@ DEVICE = 'cuda' if args.device is None else args.device
 NEW_LEARNING_RATE = None if args.new_learning_rate is None else 10**args.new_learning_rate
 MIN_STOP = 20 if args.stopper_min_ep is None else args.stopper_min_ep
 print('training name:', TRAINING_NAME)
+1/0
 
 def feed(dat):
     inp = dat['inp'].to(DEVICE)
@@ -101,8 +102,8 @@ epoch = 0
 lowest_va_loss = 9999999999
 best_ep = 0
 
-def get_model_path(name):
-    path = os.path.join(SAVE_FOLDER, f'{TRAINING_NAME}.{name}')
+def get_model_path(label):
+    path = os.path.join(SAVE_FOLDER, f'{TRAINING_NAME}.{label}')
     return path
 
 # load state for amp
@@ -241,7 +242,7 @@ def validation(tr_loss, profile=False):
         print(t4-t3, 'val_feed()')
         print(t2-t1, 'save_model()')
 
-def save_model(name):
+def save_model(label):
     d = {
         'lowest_va_loss': lowest_va_loss,
         'epoch': epoch,
@@ -254,7 +255,7 @@ def save_model(name):
     if IS_CONTINUE:
         last_train_params.append(str(args))
         d['train_params'] = last_train_params
-    path = get_model_path(name)
+    path = get_model_path(label)
     torch.save(d, path)
     
 def avg(losses: list):
