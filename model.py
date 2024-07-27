@@ -12,7 +12,7 @@ from utils.cuda import *
 
 
 class PAF(nn.Module):
-    def __init__(self, sigma_points, sigma_links, links, n_point=19, n_link=18, n_stage=3, img_size=720, **kw):
+    def __init__(self, sigma_points, sigma_links, links, n_point=19, n_link=18, n_stage=3, img_size=720, no_weight=False, **kw):
         super().__init__()
         self.sigma_points = sigma_points
         self.sigma_links = sigma_links
@@ -27,7 +27,7 @@ class PAF(nn.Module):
         assert n_stage > 0
         assert len(sigma_points) == n_stage
         assert len(sigma_links) == n_stage
-        self.backend = VGG19() 
+        self.backend = VGG19(no_weight=no_weight) 
         backend_outp_feats=128
         stages = [Stage(backend_outp_feats, n_point, n_paf, True)]
         for i in range(n_stage - 1):
@@ -109,7 +109,10 @@ class PAF(nn.Module):
 
 def test_forword(device='cuda'):
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
-    model = PAF().to(device)
+    sigma_points = [11.6, 11.6, 11.6]
+    sigma_links = [11.6, 11.6, 11.6]
+    links = [(0, 2) for i in range(18)]
+    model = PAF(sigma_points, sigma_links, links, no_weight=True).to(device)
     img_size = 128
     img_size = 720
     input_tensor = torch.rand(2, 3, img_size, img_size).to(device)
@@ -235,9 +238,12 @@ class Model(PAF):
 # torch.Size([5, 36, 90, 90]) paf_out shape
 # torch.Size([5, 36, 90, 90]) paf_out shape
 # torch.Size([5, 36, 90, 90]) paf_out shape
-        
+
+# torch.Size([5, 19, 90, 90]) -> keypoint -> tfs
+
+     
 if __name__ == '__main__':
-    # test_forword('cpu')
+    test_forword('cpu')
     # test_loss('cuda')
-    test_with_loader('cuda')
+    # test_with_loader('cuda')
         
