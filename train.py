@@ -32,11 +32,11 @@ parser.add_argument('-lr', '--learning_rate',  type=int)
 parser.add_argument('-s', '--stopper_min_ep',  type=int)
 args = parser.parse_args()
 print(args)
-params = {
-    'name':args.config
-}
-
 training = config()
+params = {
+    'name':args.config,
+    'config': training
+}
 assert args.config in training.keys()
 training = training[args.config]
 sigma_points = training.get('sigma_points')
