@@ -6,6 +6,7 @@ from PIL import Image
 from torchvision import transforms 
 from dataclasses import dataclass
 from torch.utils.data import DataLoader
+root = '../../Research/data_zip/poh_vr_1k'    
 
 @dataclass 
 class Data:
