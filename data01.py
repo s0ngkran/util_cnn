@@ -89,7 +89,7 @@ class MyDataset(Dataset):
         ans = {
             'inp': img,
             'keypoint': data.keypoint,
-            # 'poh_gt': data.gt,
+            'gt': data.gt,
             'key': data.key,
         }
         return ans

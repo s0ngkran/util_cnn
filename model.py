@@ -112,6 +112,11 @@ class PAF(nn.Module):
         gt = self.gt_gen(keypoint)
         return gt
 
+    def get_pred(self, output, func):
+        keypoint_batch = self.get_keypoints(output)
+        pred_batch = [func(k) for k in keypoint_batch]
+        return pred_batch
+
     def get_keypoints(self, gt_batch):
         heat_batch = self._handle_batch(gt_batch)
         keypoints = self._get_keypoints_from_batch(heat_batch)
@@ -163,8 +168,8 @@ def plot_img_keypoint(img, keypoint):
     # plt.imshow(img)
 
 def test_convert_heat(device='cpu', dataset='va', img_size=128):
-    my_data = MyDataset(dataset,  img_size, no_aug=True, test_mode=False)
-    loader = DataLoader(my_data, batch_size=10, shuffle=True)
+    my_data = MyDataset(dataset,  img_size)
+    loader = DataLoader(my_data, batch_size=5, shuffle=False)
     sigma_points = [11.6, 11.6, 11.6]
     sigma_links = [11.6, 11.6, 11.6]
     links = my_data.get_link()
@@ -345,7 +350,8 @@ if __name__ == '__main__':
     # test_forword('cpu')
     # test_loss('cuda')
     # test_with_loader('cuda')
-    for dataset in ['tr', 'va', 'te']:
-        for img_size in [32, 64, 128, 256, 360, 720]:
-            test_convert_heat('cpu', dataset, img_size)
+    # for dataset in ['tr', 'va', 'te']:
+    #     for img_size in [32, 64, 128, 256, 360, 720]:
+    #         test_convert_heat('cpu', dataset, img_size)
+    test_convert_heat('cpu', 'te')
         
