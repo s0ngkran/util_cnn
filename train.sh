@@ -33,28 +33,25 @@ tr(){
 tr_(){
     config=$1
     i=$2
-    python train.py ${config}_$i --config $config;
+    args=$3
+    python train.py ${config}_$i --config $config $3;
+}
+trcon(){
+    config=$1
+    i=$2
+    python train.py ${config}_$i --config $config -col -s 70;
 }
 
 #  -> static model size| change input sigma
 # sigma size          -> change size of sigma on all             | tr_720, tr_512, tr_256, tr_128, tr_64
 # curriculum learning -> change on each stage of model big2small | tr_p4, tr_p6, tr_p8
 
-# running
-tr s64 0 2& # bach
-tr s128 0 2& # bach
+for i in {2..5}
+do
+    wait_gpu 10;
+    tr_ s360 AB${i}_lr1 "-b 5 -lr -1"&
+    sleep 300;
+done
 
-# tr_ s256 0& #mozart
 
-# wait_gpu 10;
-# tr_ s256 1;
-# wait_gpu 10;
-# tr_ s256 2;
-# wait_gpu 10;
-# tr_ s256 3;
-# wait_gpu 10;
-# tr_ s256 4;
-# wait_gpu 10;
-# tr_ s256 5;
-# wait_gpu 10;
-# tr_ s256 6;
+
