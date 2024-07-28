@@ -164,7 +164,7 @@ def plot_img_keypoint(img, keypoint):
 
 def test_convert_heat(device='cpu', dataset='va', img_size=128):
     my_data = MyDataset(dataset,  img_size, no_aug=True, test_mode=False)
-    loader = DataLoader(my_data, batch_size=10, shuffle=True)
+    loader = DataLoader(my_data, batch_size=10, shuffle=False, num_workers=10, drop_last=False)
     sigma_points = [11.6, 11.6, 11.6]
     sigma_links = [11.6, 11.6, 11.6]
     links = my_data.get_link()
@@ -345,7 +345,7 @@ if __name__ == '__main__':
     # test_forword('cpu')
     # test_loss('cuda')
     # test_with_loader('cuda')
-    for dataset in ['tr', 'va', 'te']:
+    for dataset in ['te', 'va', 'tr']:
         for img_size in [32, 64, 128, 256, 360, 720]:
             test_convert_heat('cpu', dataset, img_size)
         
