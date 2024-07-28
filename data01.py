@@ -1,4 +1,5 @@
 from torch.utils.data import Dataset
+import torch
 import os
 import time
 import json
@@ -6,6 +7,13 @@ from PIL import Image
 from torchvision import transforms 
 from dataclasses import dataclass
 from torch.utils.data import DataLoader
+from utils.func import get_dist
+try:
+    import matplotlib.pyplot as plt
+except:
+    pass
+
+root = '../poh_vr_1k'    
 root = '../../Research/data_zip/poh_vr_1k'    
 
 @dataclass 
@@ -18,13 +26,43 @@ class Data:
     key: str = ''
     
     def __post_init__(self):
-        root = '../poh_vr_1k'    
         self.key = self.img_path.split('/')[-1]
         self.img_path = os.path.join(root, self.img_path)
-        assert type(self.gt) == int
+        assert type(self.gt) is int
         assert self.gt >= 0 and self.gt <= 10
         assert len(self.keypoint) == 19
         assert self.dataset in ['tr', 'va', 'te']
+
+    @staticmethod
+    def pred_from_keypoint(keypoint):
+        assert len(keypoint) == 19
+        palm_ind_list = [i for i in range(7, 19)]
+        palm_ind_list.remove(17) # remove pinky
+        index_finger_tip = keypoint[0]
+        palm = [keypoint[i] for i in palm_ind_list]
+        assert len(palm) == 11
+        dists = torch.tensor([get_dist(p, index_finger_tip) for p in palm])
+        ind = torch.argmin(dists)
+        ind = ind.item()
+        return ind
+
+    def plot(self, img_size=360, palm=None):
+        # print(self.img_path, '--img')
+        img = Image.open(self.img_path)
+        img = img.resize((img_size, img_size), Image.ANTIALIAS)
+        # img =cv2.imread(self.img_path)
+
+        # palm and index finger tip
+        if palm is not None:
+            kp = self.keypoint
+            w = img_size
+            palm = [(p[0]*w, p[1]*w) for p in palm]
+            for i, (x, y) in enumerate(palm):
+                plt.plot(x, y, 'or')
+                plt.text(x, y, str(i))
+            plt.plot(kp[0][0]*img_size, kp[0][1]*img_size, 'ob')
+
+        plt.imshow(img)
 
 
 class MyDataset(Dataset):
@@ -33,12 +71,16 @@ class MyDataset(Dataset):
         self.dataset = dataset
         self.img_size = img_size
         data = self.read_data(dataset)
-        self.no_aug = True if kwargs.get('no_aug') == True else False
+        self.no_aug = True if kwargs.get('no_aug') is True else False
         if test_mode:
             data = data[:100]
             print(f'checking mode {len(data)=}')
         self.data = data
         self.link = self.get_link()
+    def get_data(self, key):
+        for d in self.data:
+            if key == d.key:
+                return d
 
     def __getitem__(self, idx):
         data = self.data[idx]
@@ -48,6 +90,7 @@ class MyDataset(Dataset):
             'inp': img,
             'keypoint': data.keypoint,
             # 'poh_gt': data.gt,
+            'key': data.key,
         }
         return ans
 
@@ -111,8 +154,7 @@ class MyDataset(Dataset):
         return image_tensor
 
     def read_data(self, dataset):
-        root = '../poh_vr_1k/'
-        path = os.path.join(root, f'keypoints.json')
+        path = os.path.join(root, 'keypoints.json')
         with open(path, 'r') as f:
             data = json.load(f)
 
@@ -140,7 +182,6 @@ class MyDataset(Dataset):
         with open(path, 'r') as f:
             data = json.load(f)
         return data
-    
 
     def gen_big_map(self):
         sigma_point = self.sigma_point
@@ -161,24 +202,8 @@ def test():
     data = MyDataset('va', img_size)
     for d in data:
         d = d['inp'].shape
-        print(d)
         break
 
-    times = []
-    for i in range(1,10,2):
-        print(i)
-        t1 = time.time()
-        loader = DataLoader(data, batch_size=5, num_workers=i)
-        for d in loader:
-            d  =d['inp'].shape
-            # print(d)
-            continue
-        t2 = time.time()
-        t = t2-t1
-        times.append((i, t))
-
-    for i, t in times:
-        print(i, t)
 
 if __name__ == "__main__":
     test()
