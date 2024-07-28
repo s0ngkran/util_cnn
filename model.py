@@ -112,12 +112,28 @@ class PAF(nn.Module):
         gt = self.gt_gen(keypoint)
         return gt
 
-    def get_keypoints(self, gt_batch):
-        heat_batch = self._handle_batch(gt_batch)
+    def get_pred(self, output, func):
+        keypoint_batch = self.get_keypoints(output)
+        pred_batch = [func(k) for k in keypoint_batch]
+        return pred_batch
+
+    def get_keypoints(self, output, from_gt=False):
+        if from_gt:
+            heat_batch = self._handle_gt_batch(output)
+        else:
+            heat_batch = self._handle_output(output)
         keypoints = self._get_keypoints_from_batch(heat_batch)
         return keypoints
 
-    def _handle_batch(self, gt_batch):
+    def _handle_output(self, output):
+        heat, paf = output
+        heat_batch = heat[-1]
+        return heat_batch
+
+    def _handle_gt_batch(self, gt_batch):
+        # do not commit this code
+        heat, paf = last_stage
+        heat = heat[-1]
         heat_batch = []
         for gt in gt_batch:
             last_stage = gt[-1]
@@ -343,7 +359,7 @@ class Model(PAF):
      
 if __name__ == '__main__':
     # test_forword('cpu')
-    # test_loss('cuda')
+    test_loss('cuda')
     # test_with_loader('cuda')
     for dataset in ['te', 'va', 'tr']:
         for img_size in [32, 64, 128, 256, 360, 720]:

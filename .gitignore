@@ -1,2 +1,12 @@
+sk_logger
+c
+q
+t
+q_train.sh
+nohup.out.q
+.test.py.swp
+.model.py.swp
+temp.txt
 q_train.sh
 t
+.train.sh.swp
