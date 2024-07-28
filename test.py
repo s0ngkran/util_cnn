@@ -33,7 +33,7 @@ if __name__ == '__main__':
 
     ############################ config ###################
     TESTING_JSON = 'te'
-    BATCH_SIZE = 8 if args.batch_size is None else args.batch_size
+    BATCH_SIZE = 5 if args.batch_size is None else args.batch_size
     TRAINING_NAME = args.name
     N_WORKERS = args.n_worker if args.n_worker is not None else 10
     SAVE_FOLDER = 'save/'
