@@ -138,7 +138,7 @@ log = SKLogger(TRAINING_NAME, root=log_root)
 loaded_path = CONTINUE_PATH if IS_CONTINUE else None
 continue_ep = epoch if IS_CONTINUE else None
 
-setting = [f'*** Setting ***']
+setting = ['*** Setting ***']
 setting.append(f'PARAMS={params}')
 setting.append(f'NAME={TRAINING_NAME}')
 setting.append(f'BATCH={BATCH_SIZE}')

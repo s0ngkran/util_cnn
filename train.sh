@@ -33,7 +33,13 @@ tr(){
 tr_(){
     config=$1
     i=$2
-    python train.py ${config}_$i --config $config;
+    args=$3
+    python train.py ${config}_$i --config $config $3;
+}
+trcon(){
+    config=$1
+    i=$2
+    python train.py ${config}_$i --config $config -col -s 70;
 }
 
 #  -> static model size| change input sigma
@@ -44,7 +50,6 @@ tr_(){
 # tr s64 0 2& # bach
 # tr s128 0 2& # bach
 
-# tr_ s256 0& #mozart
 
 # wait_gpu 10;
 # tr_ s256 0;
