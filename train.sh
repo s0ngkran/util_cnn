@@ -10,11 +10,11 @@ wait_gpu() {
     threshold=$gb
     while true; do
         mem=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits | awk '{print $1}' | sort -n | tail -1)
-        echo "GPU= $mem MB; wait --> $gb MB|$(date -d "+7 hours") Thailand";
+        echo "GPU= $mem MB; wait --> $gb MB|$(date) Thailand";
         if (( mem > threshold )); then
             break
         fi
-        sleep 5;
+        sleep 60;
     done
 }
 
@@ -41,20 +41,37 @@ tr_(){
 # curriculum learning -> change on each stage of model big2small | tr_p4, tr_p6, tr_p8
 
 # running
-tr s64 0 2& # bach
-tr s128 0 2& # bach
+# tr s64 0 2& # bach
+# tr s128 0 2& # bach
 
 # tr_ s256 0& #mozart
 
 # wait_gpu 10;
-# tr_ s256 1;
-# wait_gpu 10;
-# tr_ s256 2;
-# wait_gpu 10;
-# tr_ s256 3;
-# wait_gpu 10;
-# tr_ s256 4;
-# wait_gpu 10;
-# tr_ s256 5;
-# wait_gpu 10;
-# tr_ s256 6;
+# tr_ s256 0;
+
+# tr_ s360 0; # chopin
+# tr_ s720 0; # chopin
+# tr_ s256 11; # chopin
+
+
+# AC
+
+# for i in {1..5}
+# do
+#     wait_gpu 8;
+#     tr_ s64 AC$i&
+#     sleep 301;
+
+#     wait_gpu 9;
+#     tr_ s128 AC$i&
+#     sleep 302;
+# done
+
+
+
+
+wait_gpu 16;
+i=0
+config=s64
+python train.py ${config}_AC_T1_$i --config $config -b 15;
+# sleep 301;
