@@ -32,13 +32,14 @@ parser.add_argument('-lr', '--learning_rate',  type=int)
 parser.add_argument('-s', '--stopper_min_ep',  type=int)
 args = parser.parse_args()
 print(args)
+
+training = config()[args.config]
 params = {
-    'name':args.config
+    'name':args.config,
+    'config': training,
 }
 
-training = config()
-assert args.config in training.keys()
-training = training[args.config]
+
 sigma_points = training.get('sigma_points')
 sigma_links = training.get('sigma_links')
 img_size = training.get('img_size')
@@ -131,12 +132,14 @@ if IS_CONTINUE:
 else:
     learning_rate = LEARNING_RATE
 
-log = SKLogger(TRAINING_NAME, root='/host')
+
+log_root = '/host' if os.path.exists('/host') else None
+log = SKLogger(TRAINING_NAME, root=log_root)
 
 loaded_path = CONTINUE_PATH if IS_CONTINUE else None
 continue_ep = epoch if IS_CONTINUE else None
 
-setting = [f'*** Setting ***']
+setting = ['*** Setting ***']
 setting.append(f'PARAMS={params}')
 setting.append(f'NAME={TRAINING_NAME}')
 setting.append(f'BATCH={BATCH_SIZE}')

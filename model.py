@@ -9,6 +9,12 @@ import torch.nn.functional as F
 from utils.paf_util import *
 from utils.gen_gt import *
 from utils.cuda import *
+from torch.utils.data import DataLoader
+from data01 import MyDataset, Data
+try:
+    import matplotlib.pyplot as plt
+except:
+    pass
 
 
 class PAF(nn.Module):
@@ -33,7 +39,7 @@ class PAF(nn.Module):
         for i in range(n_stage - 1):
             stages.append(Stage(backend_outp_feats, n_point, n_paf, False))
         self.stages = nn.ModuleList(stages)
-        self.gt_gen = self.init_gt_generator(img_size, sigma_points, sigma_links, links)
+        self.gt_gen = self._init_gt_generator(img_size, sigma_points, sigma_links, links)
 
     def __str__(self):
         txt = ['PAF model']
@@ -96,7 +102,7 @@ class PAF(nn.Module):
         sum_loss = loss_point + loss_link
         return sum_loss
 
-    def init_gt_generator(self, img_size, sigma_points, sigma_links, links):
+    def _init_gt_generator(self, img_size, sigma_points, sigma_links, links):
         assert len(sigma_points) == self.n_stage
         assert len(links) == self.n_link
         gt_gen = GTGen(img_size, sigma_points, sigma_links, links)
@@ -106,6 +112,49 @@ class PAF(nn.Module):
         gt = self.gt_gen(keypoint)
         return gt
 
+    def get_pred(self, output, func):
+        keypoint_batch = self.get_keypoints(output)
+        pred_batch = [func(k) for k in keypoint_batch]
+        return pred_batch
+
+    def get_keypoints(self, output, from_gt=False):
+        if from_gt:
+            heat_batch = self._handle_gt_batch(output)
+        else:
+            heat_batch = self._handle_output(output)
+        keypoints = self._get_keypoints_from_batch(heat_batch)
+        return keypoints
+
+    def _handle_output(self, output):
+        heat, paf = output
+        heat_batch = heat[-1]
+        return heat_batch
+
+    def _handle_gt_batch(self, gt_batch):
+        # do not commit this code
+        heat, paf = last_stage
+        heat = heat[-1]
+        heat_batch = []
+        for gt in gt_batch:
+            last_stage = gt[-1]
+            heat, paf = last_stage
+            heat_batch.append(heat)
+        heat_batch = torch.stack(heat_batch)
+        return heat_batch
+
+    def _get_keypoints_from_batch(self, heat_batch):
+        batch_size, num_maps, height, width = heat_batch.shape
+        keypoints = []
+        for i in range(batch_size):
+            kps = []
+            for j in range(num_maps):
+                heatmap = heat_batch[i, j, :, :]
+                max_index = torch.argmax(heatmap).item()
+                y, x = divmod(max_index, width)
+                kps.append((x, y))
+            keypoints.append(kps)
+        return keypoints
+
 
 def test_forword(device='cuda'):
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -113,8 +162,8 @@ def test_forword(device='cuda'):
     sigma_links = [11.6, 11.6, 11.6]
     links = [(0, 2) for i in range(18)]
     model = PAF(sigma_points, sigma_links, links, no_weight=True).to(device)
-    img_size = 128
-    img_size = 720
+    img_size = 64
+    # img_size = 720
     input_tensor = torch.rand(2, 3, img_size, img_size).to(device)
     print(input_tensor.shape, 'input tensor')
     output = model(input_tensor)
@@ -124,6 +173,72 @@ def test_forword(device='cuda'):
             print('out shape',len(out))
             for o in out:
                 print(o.shape)
+
+def plot_img_keypoint(img, keypoint):
+    print(keypoint)
+    # plt.imshow(img)
+
+def test_convert_heat(device='cpu', dataset='va', img_size=128):
+    my_data = MyDataset(dataset,  img_size, no_aug=True, test_mode=False)
+    loader = DataLoader(my_data, batch_size=10, shuffle=False, num_workers=10, drop_last=False)
+    sigma_points = [11.6, 11.6, 11.6]
+    sigma_links = [11.6, 11.6, 11.6]
+    links = my_data.get_link()
+    model = PAF(
+        sigma_points,
+        sigma_links,
+        links,
+        img_size=img_size,
+        no_weight=True
+    ).to(device)
+    n = len(loader)
+    cnt = 0
+    fail = []
+    for d in loader:
+        cnt += 1
+        print(cnt, n)
+        imgs = d['inp']
+        keypoint_batch = d['keypoint']
+        keys = d['key']
+
+        data = [my_data.get_data(k) for k in keys]
+
+        gt_batch = model.gen_gt(keypoint_batch)
+        new_keypoint_batch = model.get_keypoints(gt_batch)
+
+        # print('keypoint batch',new_keypoint_batch)
+        for i in range(len(imgs)):
+            # img = imgs[i]
+            dat = data[i]
+            keypoint = new_keypoint_batch[i]
+            pred = Data.pred_from_keypoint(keypoint)
+            if pred != dat.gt:
+                out= f'{pred}, {dat.gt}'
+                print((dat.key, out))
+                fail.append((dat.key, out))
+
+
+            # plt.imshow(torch.mean(img, dim=0))
+            # # plt.imshow(torch.mean(heat_batch[i], dim=0))
+            # for i, (x,y) in enumerate(keypoint):
+            #     plt.plot(x,y,'ro')
+            #     plt.text(x+10,y,str(i))
+                
+            # plt.title(str(i))
+            # plt.show()
+    print('passed', img_size, dataset, len(fail))
+    print(len(fail), fail)
+
+    # va 21 9
+    # va 64 9
+    # va 128 7
+    # va 256 7
+    # va 360 0
+    # va 720 0
+    return len(fail)
+
+
+
 
 def test_loss(device='cuda'):
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
@@ -243,7 +358,10 @@ class Model(PAF):
 
      
 if __name__ == '__main__':
-    test_forword('cpu')
-    # test_loss('cuda')
+    # test_forword('cpu')
+    test_loss('cuda')
     # test_with_loader('cuda')
+    for dataset in ['te', 'va', 'tr']:
+        for img_size in [32, 64, 128, 256, 360, 720]:
+            test_convert_heat('cpu', dataset, img_size)
         
