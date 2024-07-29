@@ -32,13 +32,14 @@ parser.add_argument('-lr', '--learning_rate',  type=int)
 parser.add_argument('-s', '--stopper_min_ep',  type=int)
 args = parser.parse_args()
 print(args)
-training = config()
+
+training = config()[args.config]
 params = {
     'name':args.config,
-    'config': training
+    'config': training,
 }
-assert args.config in training.keys()
-training = training[args.config]
+
+
 sigma_points = training.get('sigma_points')
 sigma_links = training.get('sigma_links')
 img_size = training.get('img_size')
@@ -257,6 +258,8 @@ def save_model(label):
         last_train_params.append(str(args))
         d['train_params'] = last_train_params
     path = get_model_path(label)
+    # torch.save(d, path, _use_new_zipfile_serialization=False)
+    # if error this line, check file permission
     torch.save(d, path)
     
 def avg(losses: list):
@@ -264,11 +267,8 @@ def avg(losses: list):
 
 def main():
     global lowest_va_loss
-    # train
     profile = args.profile
     while True:
-        # print('fail')
-        # break
         tr_loss = train(profile)
         va_loss = validation(tr_loss, profile)
         if CHECKING: break
