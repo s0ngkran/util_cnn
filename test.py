@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('name')
-    parser.add_argument('img_size', type=int)
+    parser.add_argument('img_size')
     parser.add_argument('-b', '--batch_size', help='set batch size', type=int) 
     parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
     parser.add_argument('-d', '--device') 
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     assert args.device in [None, 'cpu', 'cuda']
     print(args)
-    img_size = args.img_size
+    img_size = int(args.img_size)
     model_kwargs = {
     }
     data_kwargs = {
@@ -55,14 +55,14 @@ if __name__ == '__main__':
             os.mkdir(folder_name)
 
     # load data
+    checkpoint = torch.load(WEIGHT_PATH, map_location=torch.device(DEVICE))
+    setting = Setting(checkpoint['setting'])
+
     testing_set = MyDataset(TESTING_JSON, img_size, **data_kwargs)
     testing_set_loader = DataLoader(testing_set,  batch_size=BATCH_SIZE, num_workers=N_WORKERS, shuffle=False, drop_last=False)#, collate_fn=my_collate)
 
     # load state for amp
-    checkpoint = torch.load(WEIGHT_PATH, map_location=torch.device(DEVICE))
-    setting = Setting(checkpoint['setting'])
     links = MyDataset.get_link()
-    img_size = args.img_size
     model = Model(
         setting.model.sig_point,
         setting.model.sig_link,
@@ -70,7 +70,6 @@ if __name__ == '__main__':
         img_size=img_size,
         **model_kwargs).to(DEVICE)
     model.load_state_dict(checkpoint['model_state_dict'])
-    
 
     def test():
         global model, global_loss
@@ -99,7 +98,7 @@ if __name__ == '__main__':
             torch.save(out, os.path.join(TESTING_FOLDER,f'{args.name}.res'))
             corr = [gt==pr for gt, pr in zip(gt_list, pred_list)]
             acc = sum(corr)/len(gt_list)
-        return acc
+        return float(acc)
 
     acc = test()
     print(f'acc {args.name} =', acc)
