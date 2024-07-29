@@ -67,6 +67,7 @@ class Data:
 
 
 class MyDataset(Dataset):
+    cache_folder = '.cache_image'
     def __init__(self, dataset, img_size, test_mode=False, **kwargs):
         assert dataset in ['tr', 'va', 'te']
         self.dataset = dataset
@@ -78,6 +79,9 @@ class MyDataset(Dataset):
             print(f'checking mode {len(data)=}')
         self.data = data
         self.link = self.get_link()
+
+        if not os.path.exists(self.cache_folder):
+            os.mkdir(self.cache_folder)
     def get_data(self, key):
         for d in self.data:
             if key == d.key:
@@ -119,7 +123,15 @@ class MyDataset(Dataset):
         ]
         return links
 
+    def get_cache_path(self, image_path):
+        last = image_path.split('/')[-1]
+        return os.path.join(self.cache_folder, last)
+
     def load_img(self, image_path,  log=False):
+        p = self.get_cache_path(image_path)
+        if os.path.exists(p):
+            image_tensor = torch.load(p)
+            return image_tensor
         image = Image.open(image_path)
         # 0-255
         if log:
@@ -151,7 +163,8 @@ class MyDataset(Dataset):
             print('min, max =',image_array.min(), image_array.max())
             print('-----end log load img()')
             print()
-        
+        torch.save(image_tensor, p)
+        print('cached', p)
         return image_tensor
 
     def read_data(self, dataset):

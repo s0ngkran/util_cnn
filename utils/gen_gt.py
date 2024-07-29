@@ -58,6 +58,7 @@ class GTGen:
 
 
     def _gen_one_img(self, keypoint):
+        # t0 = time.time()
         size = self.img_size
         x_list = [k[0]*size for k in keypoint]
         y_list = [k[1]*size for k in keypoint]
@@ -67,6 +68,10 @@ class GTGen:
             gt = self._gen_one_size(sp, xy, sl)
             # shape (n_kp, 720, 720)
             gt_list.append(gt)
+        # t1 = time.time()
+        # t = t1-t0
+        # print(t*19*1000,'ttt')
+        # 1190/0
         return gt_list
 
     def _gen_one_size(self, sigma_point, xy, sigma_link):
@@ -187,14 +192,14 @@ def test_mini():
 
 def test_gen_gt():
     size = 64
-    keypoint = [(0.1,0.3),(0.4,0.1), (.5,.6)]
+    keypoint = [[[.1],[.3]],[[.4],[.1]],[[.5],[.6]]]
+    # 19 2 5
     link = [(0,1)]
-    # links = [ [0,1], [1,2], [2,3], [3,4], [4,5], [5,6], [6,7], [7,8], [8,9], [7,18], [18, 12], [17, 16], [14, 15], [13, 12], [10, 11], [11, 12], [12, 15], [15, 16]]        
     sigma_points = [11.6, 7.6, 4.6]
     sigma_links = [11.6, 7.6, 4.6]
 
-    gen = GTGen(size, sigma_points, link)
-    gt_list = gen(keypoint, sigma_points, sigma_links)
+    gen = GTGen(size,  sigma_points, sigma_links, link)
+    gt_list = gen(keypoint)
 
     n = len(gt_list)
     fig, axs =  plt.subplots(n * 2)
