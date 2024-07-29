@@ -17,7 +17,10 @@ tr(){
     config=$1
     i=$2
     args=$3
-    python train.py ${config}_$i --config $config $args;
+    name=${config}_$i
+    echo "train... $name"
+     python train.py $name --config $config $args>log/$name;
+     echo "done $name";
 }
 
 te(){
