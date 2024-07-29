@@ -32,13 +32,14 @@ parser.add_argument('-lr', '--learning_rate',  type=int)
 parser.add_argument('-s', '--stopper_min_ep',  type=int)
 args = parser.parse_args()
 print(args)
-training = config()
+
+training = config()[args.config]
 params = {
     'name':args.config,
-    'config': training
+    'config': training,
 }
-assert args.config in training.keys()
-training = training[args.config]
+
+
 sigma_points = training.get('sigma_points')
 sigma_links = training.get('sigma_links')
 img_size = training.get('img_size')
