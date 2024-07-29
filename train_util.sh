@@ -12,8 +12,6 @@ wait_gpu() {
         sleep 60;
     done
 }
-wait_gpu_chopin() {
-}
 
 tr(){
     config=$1
@@ -21,3 +19,10 @@ tr(){
     args=$3
     python train.py ${config}_$i --config $config $args;
 }
+
+te(){
+    name=$1
+    args=$2
+    python test.py $name $args|grep acc>>acc;
+}
+
