@@ -69,11 +69,11 @@ class VGG19(nn.Module):
             vgg = models.vgg19()
             layers_to_use = list(list(vgg.children())[0].children())[:23]
         elif use_bn:
-            vgg = models.vgg19(weights=models.VGG19_Weights.IMAGENET1K_V1)
-            layers_to_use = list(list(vgg.children())[0].children())[:23]
-        else:
             vgg = models.vgg19_bn(pretrained=True)
             layers_to_use = list(list(vgg.children())[0].children())[:33]
+        else:
+            vgg = models.vgg19(pretrained=True)
+            layers_to_use = list(list(vgg.children())[0].children())[:23]
         self.vgg = nn.Sequential(*layers_to_use)
         self.feature_extractor = nn.Sequential(make_standard_block(512, 256, 3),
                                                make_standard_block(256, 128, 3))
