@@ -12,12 +12,14 @@ wait_gpu() {
         sleep 60;
     done
 }
-wait_gpu_chopin() {
-}
 
 tr(){
     config=$1
     i=$2
     args=$3
-    python train.py ${config}_$i --config $config $args;
+    name=${config}_$i
+
+    echo "train $config $i $args"
+    echo "args $args"
+    python train.py $name --config $config $args>log/$name;
 }
