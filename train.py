@@ -258,6 +258,8 @@ def save_model(label):
         last_train_params.append(str(args))
         d['train_params'] = last_train_params
     path = get_model_path(label)
+    # torch.save(d, path, _use_new_zipfile_serialization=False)
+    # if error this line, check file permission
     torch.save(d, path)
     
 def avg(losses: list):
@@ -265,11 +267,8 @@ def avg(losses: list):
 
 def main():
     global lowest_va_loss
-    # train
     profile = args.profile
     while True:
-        # print('fail')
-        # break
         tr_loss = train(profile)
         va_loss = validation(tr_loss, profile)
         if CHECKING: break

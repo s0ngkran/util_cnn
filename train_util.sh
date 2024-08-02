@@ -18,8 +18,14 @@ tr(){
     i=$2
     args=$3
     name=${config}_$i
-
-    echo "train $config $i $args"
-    echo "args $args"
-    python train.py $name --config $config $args>log/$name;
+    echo "train... $name"
+     python train.py $name --config $config $args>log/$name;
+     echo "done $name";
 }
+
+te(){
+    name=$1
+    args=$2
+    python test.py $name $args|grep acc>>acc;
+}
+
