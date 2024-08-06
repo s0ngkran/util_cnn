@@ -38,3 +38,4 @@ acc s64_c1 = 0.08053690940141678 # use_bn=False
 acc s256_11 = 0.07382550090551376 # use_bn=False
 acc s360_0 = 0.11409395933151245 # use_bn=False
 acc s720_0 = 0.1342281848192215 # use_bn=False
+acc s720_AC0_lr1 = 0.15436241030693054 # use_bn=False
