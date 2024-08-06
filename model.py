@@ -359,9 +359,9 @@ class Model(PAF):
      
 if __name__ == '__main__':
     # test_forword('cpu')
-    test_loss('cuda')
-    # test_with_loader('cuda')
-    for dataset in ['te', 'va', 'tr']:
-        for img_size in [32, 64, 128, 256, 360, 720]:
-            test_convert_heat('cpu', dataset, img_size)
+    # test_loss('cuda')
+    test_with_loader('cuda')
+    # for dataset in ['te', 'va', 'tr']:
+    #     for img_size in [32, 64, 128, 256, 360, 720]:
+    #         test_convert_heat('cpu', dataset, img_size)
         
