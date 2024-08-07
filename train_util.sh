@@ -1,3 +1,7 @@
+
+TZ='Asia/Bangkok'; export TZ;
+date;
+
 wait_gpu() {
     gb=$1
     gb=$(expr $gb '*' 1024) 
