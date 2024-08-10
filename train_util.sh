@@ -1,7 +1,4 @@
 
-TZ='Asia/Bangkok'; export TZ; 
-date;
-
 dateLocal(){
     is_plus_7=$1
     if [ -z "$is_plus_7" ]; then
