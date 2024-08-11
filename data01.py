@@ -68,8 +68,9 @@ class Data:
 
 class MyDataset(Dataset):
     cache_folder = '.cache_image'
-    def __init__(self, dataset, img_size, test_mode=False, **kwargs):
+    def __init__(self, dataset, img_size=0, test_mode=False, **kwargs):
         assert dataset in ['tr', 'va', 'te']
+        assert img_size in [64,128,256,360,720]
         self.dataset = dataset
         self.img_size = img_size
         data = self.read_data(dataset)
@@ -127,11 +128,12 @@ class MyDataset(Dataset):
         last = image_path.split('/')[-1]
         return os.path.join(self.cache_folder, last)
 
-    def load_img(self, image_path,  log=False):
-        p = self.get_cache_path(image_path)
-        if os.path.exists(p):
-            image_tensor = torch.load(p)
-            return image_tensor
+    def load_img(self, image_path,  log=False, cache=False):
+        if cache:
+            p = self.get_cache_path(image_path)
+            if os.path.exists(p):
+                image_tensor = torch.load(p)
+                return image_tensor
         image = Image.open(image_path)
         # 0-255
         if log:
@@ -140,21 +142,18 @@ class MyDataset(Dataset):
             print('bef image size|mode =', image.size, image.mode)
 
         img_size = self.img_size
-        # preprocess = transforms.Compose([
-        #     transforms.Resize(img_size),
-        #     transforms.RandomRotation(5),        
-        #     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),  
-        #     transforms.RandomResizedCrop(img_size, scale=(0.75, 1), ratio=(1.0, 1.0)), 
-        #     transforms.RandomGrayscale(p=0.2),
-        #     transforms.ToTensor(),
-        #     transforms.Normalize(mean=[0.485, 0.456, 0.406],
-        #                       std=[0.229, 0.224, 0.225]),
-        # ])
-        # if self.no_aug or self.dataset == 'testing':
-        preprocess = transforms.Compose([
+        trans = [
+            transforms.Resize(img_size),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),  
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                              std=[0.229, 0.224, 0.225]),
+        ] if (self.no_aug or self.dataset == 'testing') else [
             transforms.Resize(img_size),
             transforms.ToTensor(),
-        ])
+        ]
+        preprocess = transforms.Compose(trans)
         image_tensor = preprocess(image)
         if log:
             print('aft image size|min|max =', image_tensor.size(), image_tensor.min(), image_tensor.max())
@@ -163,8 +162,9 @@ class MyDataset(Dataset):
             print('min, max =',image_array.min(), image_array.max())
             print('-----end log load img()')
             print()
-        torch.save(image_tensor, p)
-        print('cached', p)
+        if cache:
+            torch.save(image_tensor, p)
+            print('cached', p)
         return image_tensor
 
     def read_data(self, dataset):
@@ -201,6 +201,13 @@ class MyDataset(Dataset):
         return len(self.data)
 
 def test():
+    img_size = 360
+    data = MyDataset('va', img_size)
+    for d in data:
+        d = d['inp'].shape
+        break
+
+def plot(d):
     img_size = 360
     data = MyDataset('va', img_size)
     for d in data:

@@ -156,13 +156,16 @@ class PAF(nn.Module):
         return keypoints
 
 
+
+
+
 def test_forword(device='cuda'):
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     sigma_points = [11.6, 11.6, 11.6]
     sigma_links = [11.6, 11.6, 11.6]
     links = [(0, 2) for i in range(18)]
-    model = PAF(sigma_points, sigma_links, links, no_weight=True).to(device)
-    img_size = 64
+    img_size = 720
+    model = Model(sigma_points, sigma_links, links, img_size=img_size, no_weight=True).to(device)
     # img_size = 720
     input_tensor = torch.rand(2, 3, img_size, img_size).to(device)
     print(input_tensor.shape, 'input tensor')
@@ -270,14 +273,15 @@ def test_with_loader(device='cuda'):
     from torch.utils.data import DataLoader
 
     img_size = 720
-    model = PAF(
+    img_size = 64
+    model = Model(
         [10,10,10],
         [10,10,10],
         MyDataset.get_link(),
         img_size=img_size,
     ).to(device)
     dataset = MyDataset('va', img_size, test_mode=True)
-    dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
+    dataloader = DataLoader(dataset,  batch_size=5, shuffle=True)
     '''
     def __getitem__(self, idx):
         ans = {
@@ -294,9 +298,10 @@ def test_with_loader(device='cuda'):
         t0 = time.time()
         img = dat['inp'].to(device)
         keypoint = dat['keypoint']
-        # print(img.shape, 'inp shape from loader')
+        print(img.shape, 'inp shape from loader')
 
         pred = model(img)
+        print(pred[0][-1].shape)
         # del img
         # torch.cuda.empty_cache()
         t1 = time.time()
@@ -342,7 +347,7 @@ def test_with_loader(device='cuda'):
 
 class Model(PAF):
     def __init__(self, sigma_points, sigma_links, links, n_point=19, n_link=18, n_stage=3, img_size=720, **kw):
-        super().__init__(sigma_points, sigma_links, links, n_point=19, n_link=18, n_stage=3, img_size=720, **kw)
+        super().__init__(sigma_points, sigma_links, links, n_point=n_point, n_link=n_link, n_stage=n_stage, img_size=img_size, **kw)
 
 
 # torch.Size([5, 36, 720, 720]) gt_link shape
@@ -358,7 +363,7 @@ class Model(PAF):
 
      
 if __name__ == '__main__':
-    # test_forword('cpu')
+    # test_forword('cuda')
     # test_loss('cuda')
     test_with_loader('cuda')
     # for dataset in ['te', 'va', 'tr']:
