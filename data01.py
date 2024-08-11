@@ -8,6 +8,8 @@ from torchvision import transforms
 from dataclasses import dataclass
 from torch.utils.data import DataLoader
 from utils.func import get_dist
+import random 
+import math
 try:
     import matplotlib.pyplot as plt
 except:
@@ -91,10 +93,10 @@ class MyDataset(Dataset):
     def __getitem__(self, idx):
         data = self.data[idx]
         img_path = data.img_path
-        img = self.load_img(img_path)
+        img, keypoint = self.load_img(img_path, data.keypoint)
         ans = {
             'inp': img,
-            'keypoint': data.keypoint,
+            'keypoint': keypoint,
             'gt': data.gt,
             'key': data.key,
         }
@@ -128,44 +130,132 @@ class MyDataset(Dataset):
         last = image_path.split('/')[-1]
         return os.path.join(self.cache_folder, last)
 
-    def load_img(self, image_path,  log=False, cache=False):
-        if cache:
-            p = self.get_cache_path(image_path)
-            if os.path.exists(p):
-                image_tensor = torch.load(p)
-                return image_tensor
-        image = Image.open(image_path)
+    def gen_rotated_data(self, img_pil, keypoint, max_angle):
+        # tested
+        '''
+        random angle within max_angle
+        ex. max_angle = 30, then -30 to 30
+        '''
+        angle = random.uniform(-max_angle, max_angle)
+        img = img_pil.rotate(angle)
+        
+        # rotate keypoint
+        keypoint = torch.tensor(keypoint)
+        center = torch.tensor([0.5, 0.5])
+        angle = torch.tensor([angle]) * math.pi / 180
+        cos = torch.cos(angle)
+        sin = torch.sin(angle)
+        rot_matrix = torch.stack([cos, -sin, sin, cos]).view(2,2)
+        keypoint = (keypoint - center) @ rot_matrix + center
+        keypoint = keypoint.tolist()
+        return img, keypoint
+
+    def gen_cropped_data(self, img_pil, keypoint, img_size):
+
+        img_pil = img_pil.resize((img_size, img_size), Image.ANTIALIAS)
+        x_list = [p[0] for p in keypoint]
+        y_list = [p[1] for p in keypoint]
+        x_min, x_max = min(x_list), max(x_list)
+        y_min, y_max = min(y_list), max(y_list)
+        dist_x, dist_y = x_max - x_min, y_max - y_min
+        min_dist = min(dist_x, dist_y)
+        padding = min_dist * 0.3 # 30% padding
+        # print('x_min, x_max, y_min, y_max =', x_min, x_max, y_min, y_max)
+        # print('padding =', padding) 
+        
+        inner_x_min = max(0, x_min - padding)
+        inner_x_max = min(1, x_max + padding)
+        inner_y_min = max(0, y_min - padding)
+        inner_y_max = min(1, y_max + padding)
+
+        # print('inner_x_min, inner_x_max, inner_y_min, inner_y_max =', inner_x_min, inner_x_max, inner_y_min, inner_y_max)
+        # print('img_size =', img_size)
+
+        space_left = [0, inner_x_min]
+        space_right = [inner_x_max, 1]
+        space_top = [0, inner_y_min]
+        space_bottom = [inner_y_max, 1]
+
+        # random crop
+        x_min = random.uniform(*space_left)
+        x_max = random.uniform(*space_right)
+        y_min = random.uniform(*space_top)
+        y_max = random.uniform(*space_bottom)
+
+        crop_w = x_max - x_min
+        crop_h = y_max - y_min
+        min_size = min(crop_w, crop_h)
+        
+        if crop_w != min_size:
+            x_min = inner_x_min
+            x_max = x_min + min_size
+        else:
+            y_min = inner_y_min
+            y_max = y_min + min_size
+        
+
+        cropped_image = img_pil.crop((x_min * img_size, y_min * img_size, x_max * img_size, y_max * img_size))
+
+        # update keypoint
+        keypoint = torch.tensor(keypoint)
+        keypoint[:, 0] = (keypoint[:, 0] - x_min) / (x_max - x_min)
+        keypoint[:, 1] = (keypoint[:, 1] - y_min) / (y_max - y_min)
+        keypoint = keypoint.tolist()
+        # print(keypoint)
+
+        # resize to img_size
+        cropped_image = cropped_image.resize((img_size, img_size), Image.ANTIALIAS)
+        return cropped_image, keypoint
+
+    def load_img(self, image_path, keypoint,  log=False):
+        image_pil = Image.open(image_path)
         # 0-255
         if log:
             print()
             print('-----log load img()')
-            print('bef image size|mode =', image.size, image.mode)
+            print('bef image size|mode =', image_pil.size, image_pil.mode)
+            # find min max of image_pil
+            # tensor from pil image
+            tensor = transforms.ToTensor()(image_pil)
+            mn, mx = tensor.min(), tensor.max()
+            print('bef -> mn, mx =', mn, mx)
 
-        img_size = self.img_size
+        if (self.no_aug or self.dataset == 'testing'):
+            trans = [
+                transforms.Resize(self.img_size),
+                transforms.ToTensor(),
+            ]
+            preprocess = transforms.Compose(trans)
+            image_tensor = preprocess(image_pil)
+        else:
+            image_tensor, keypoint = self.do_transform(image_pil, keypoint)
+        if log:
+            # print min max of image
+            mn, mx = image_tensor.min(), image_tensor.max()
+            print('aft -> mn, mx =', mn, mx)
+
+        return image_tensor, keypoint
+
+    def do_transform(self, image_pil, keypoint):
+        max_angle_degree = 45
+        if random.random() > 0.5:
+            image_pil, keypoint = self.gen_cropped_data(image_pil, keypoint, img_size=self.img_size)
+            image_pil, keypoint = self.gen_rotated_data(image_pil, keypoint, max_angle_degree)
+        else:
+            image_pil, keypoint = self.gen_rotated_data(image_pil, keypoint, max_angle_degree)
+            image_pil, keypoint = self.gen_cropped_data(image_pil, keypoint, img_size=self.img_size)
+
         trans = [
-            transforms.Resize(img_size),
+            transforms.Resize(self.img_size),
             transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),  
-            transforms.RandomGrayscale(p=0.2),
+            transforms.RandomGrayscale(p=0.1),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.485, 0.456, 0.406],
                               std=[0.229, 0.224, 0.225]),
-        ] if (self.no_aug or self.dataset == 'testing') else [
-            transforms.Resize(img_size),
-            transforms.ToTensor(),
-        ]
+        ] 
         preprocess = transforms.Compose(trans)
-        image_tensor = preprocess(image)
-        if log:
-            print('aft image size|min|max =', image_tensor.size(), image_tensor.min(), image_tensor.max())
-            # approx -> -2 to 2
-            image_array = image_tensor.numpy()
-            print('min, max =',image_array.min(), image_array.max())
-            print('-----end log load img()')
-            print()
-        if cache:
-            torch.save(image_tensor, p)
-            print('cached', p)
-        return image_tensor
+        image_tensor = preprocess(image_pil)
+        return image_tensor, keypoint
 
     def read_data(self, dataset):
         path = os.path.join(root, 'keypoints.json')
@@ -207,14 +297,33 @@ def test():
         d = d['inp'].shape
         break
 
-def plot(d):
-    img_size = 360
+def plot_img(img, keypoint=None):
+    img_color_mean = img.permute(1,2,0).numpy()
+    plt.imshow(img_color_mean)
+
+    img_size = img.shape[-1]
+
+    if keypoint is not None:
+        for i, (x, y) in enumerate(keypoint):
+            x, y = x*img_size, y*img_size
+            plt.plot(x, y, 'or')
+            plt.text(x, y, str(i))
+    plt.show()
+
+
+def plot():
+    img_size = 720
     data = MyDataset('va', img_size)
     for d in data:
-        d = d['inp'].shape
+        img = d['inp']
+        keypoint = d['keypoint']
+        plot_img(img, keypoint=keypoint)
+        # img, keypoint = gen_rotated_data(img, keypoint, 30)
+        # plot_img(img, keypoint=keypoint)
         break
 
 
 if __name__ == "__main__":
-    test()
+    # test()
+    plot()
 
