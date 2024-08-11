@@ -54,7 +54,7 @@ class Data:
     def plot(self, img_size=360, palm=None):
         # print(self.img_path, '--img')
         img = Image.open(self.img_path)
-        img = img.resize((img_size, img_size), Image.ANTIALIAS)
+        img = img.resize((img_size, img_size))
         # img =cv2.imread(self.img_path)
 
         # palm and index finger tip
@@ -164,7 +164,7 @@ class MyDataset(Dataset):
 
     def gen_cropped_data(self, img_pil, keypoint, img_size):
         keypoint = keypoint.copy()
-        img_pil = img_pil.resize((img_size, img_size), Image.ANTIALIAS)
+        img_pil = img_pil.resize((img_size, img_size))
         x_list = [p[0] for p in keypoint]
         y_list = [p[1] for p in keypoint]
         x_min, x_max = min(x_list), max(x_list)
@@ -218,7 +218,7 @@ class MyDataset(Dataset):
         cropped_image = img_pil.crop(
             (x_min * img_size, y_min * img_size, x_max * img_size, y_max * img_size)
         )
-        cropped_image = cropped_image.resize((img_size, img_size), Image.ANTIALIAS)
+        cropped_image = cropped_image.resize((img_size, img_size))
         return cropped_image, keypoint
 
     def load_img(self, image_path, keypoint, log=False):
@@ -359,5 +359,5 @@ if __name__ == "__main__":
     # random.seed(0)
     # torch.manual_seed(0)
 
-    test()
-    # plot()
+    # test()
+    plot()
