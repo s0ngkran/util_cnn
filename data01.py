@@ -197,17 +197,6 @@ class MyDataset(Dataset):
             data = json.load(f)
         return data
 
-    def gen_big_map(self):
-        sigma_point = self.sigma_point
-        size = 720 * 2
-        # size = 720 
-        width = size
-        height = size
-
-        # 0.00445 sec on 720px on macboo
-        self.gaussian_map = self._gen_gaussian_map(width, height, sigma_point) 
-        return self.gaussian_map
-
     def __len__(self):
         return len(self.data)
 
