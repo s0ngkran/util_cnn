@@ -32,16 +32,6 @@ def config():
 
         # sigma size -> acc
         # update img_size after get result of img
-        '03x': {
-            'sigma_points': [ref *.3, ref*.3, ref*.3],
-            'sigma_links': [ref *.3, ref*.3, ref*.3],
-            'img_size': 720,
-        },
-        '06x': {
-            'sigma_points': [ref *.6, ref*.6, ref*.6],
-            'sigma_links': [ref *.6, ref*.6, ref*.6],
-            'img_size': 720,
-        },
         '1x': {
             'sigma_points': [ref *1, ref*1, ref*1],
             'sigma_links': [ref *1, ref*1, ref*1],
@@ -60,6 +50,16 @@ def config():
         '4x': {
             'sigma_points': [ref *4, ref*4, ref*4],
             'sigma_links': [ref *4, ref*4, ref*4],
+            'img_size': 720,
+        },
+        '5x': {
+            'sigma_points': [ref *5, ref*5, ref*5],
+            'sigma_links': [ref *5, ref*5, ref*5],
+            'img_size': 720,
+        },
+        '6x': {
+            'sigma_points': [ref *6, ref*6, ref*6],
+            'sigma_links': [ref *6, ref*6, ref*6],
             'img_size': 720,
         },
 
