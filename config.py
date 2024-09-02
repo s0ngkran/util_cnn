@@ -32,6 +32,16 @@ def config():
 
         # sigma size -> acc
         # update img_size after get result of img
+        '03x': {
+            'sigma_points': [ref *.3, ref*.3, ref*.3],
+            'sigma_links': [ref *.3, ref*.3, ref*.3],
+            'img_size': 720,
+        },
+        '06x': {
+            'sigma_points': [ref *.6, ref*.6, ref*.6],
+            'sigma_links': [ref *.6, ref*.6, ref*.6],
+            'img_size': 720,
+        },
         '1x': {
             'sigma_points': [ref *1, ref*1, ref*1],
             'sigma_links': [ref *1, ref*1, ref*1],
@@ -61,22 +71,22 @@ def config():
         '8p': {
             'sigma_points': [ref3, ref3*.9, ref3*.8],
             'sigma_links': [ref3, ref3*.9, ref3*.8],
-            'img_size': 720,
+            'img_size': 360,
         },
         '6p': {
             'sigma_points': [ref3, ref3*.8, ref3*.6],
             'sigma_links': [ref3, ref3*.8, ref3*.6],
-            'img_size': 720,
+            'img_size': 360,
         },
         '4p': {
             'sigma_points': [ref3, ref3*.7, ref3*.4],
             'sigma_links': [ref3, ref3*.7, ref3*.4],
-            'img_size': 720,
+            'img_size': 360,
         },
         '2p': {
             'sigma_points': [ref3, ref3*.6, ref3*.2],
             'sigma_links': [ref3, ref3*.6, ref3*.2],
-            'img_size': 720,
+            'img_size': 360,
         },
 
     }
