@@ -94,5 +94,10 @@ def config():
             'sigma_links': [ref4, ref4*.6, ref4*.2],
             'img_size': 360,
         },
+        '1p': {
+            'sigma_points': [ref4, ref4*.5, ref4*.1],
+            'sigma_links': [ref4, ref4*.5, ref4*.1],
+            'img_size': 360,
+        },
 
     }
