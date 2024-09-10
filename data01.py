@@ -207,14 +207,16 @@ def test():
         d = d['inp'].shape
         break
 
-def plot(d):
-    img_size = 360
+def plot():
+    img_size = 64
     data = MyDataset('va', img_size)
     for d in data:
-        d = d['inp'].shape
+        img = d['inp']
+        print(img.shape)
         break
 
 
 if __name__ == "__main__":
-    test()
+    # test()
+    plot()
 

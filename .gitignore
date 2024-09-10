@@ -19,3 +19,4 @@ train.sh
 run.sh
 cc
 run.sh
+__pycache__
