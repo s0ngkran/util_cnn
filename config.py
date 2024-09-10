@@ -62,6 +62,16 @@ def config():
             'sigma_links': [ref *6, ref*6, ref*6],
             'img_size': 720,
         },
+        '8x': {
+            'sigma_points': [ref *8, ref*8, ref*8],
+            'sigma_links': [ref *8, ref*8, ref*8],
+            'img_size': 720,
+        },
+        '20x': { # 20x so bad result
+            'sigma_points': [ref *20, ref*20, ref*20],
+            'sigma_links': [ref *20, ref*20, ref*20],
+            'img_size': 720,
+        },
 
         # curriculum training -> acc
         # update img_size after get result of img
