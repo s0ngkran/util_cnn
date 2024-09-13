@@ -1,8 +1,10 @@
 def config():
     ref = 11.6
+    ref1 = ref * 1
     ref2 = ref * 2
     ref3 = ref * 3
     ref4 = ref * 4
+    ref10 = ref * 10
     return {
         # image size -> acc
         's720':{
@@ -66,6 +68,11 @@ def config():
         '8x': {
             'sigma_points': [ref *8, ref*8, ref*8],
             'sigma_links': [ref *8, ref*8, ref*8],
+            'img_size': 720,
+        },
+        '20x': { # 20x so bad result
+            'sigma_points': [ref *20, ref*20, ref*20],
+            'sigma_links': [ref *20, ref*20, ref*20],
             'img_size': 720,
         },
         '9x': {
@@ -140,5 +147,37 @@ def config():
             'sigma_links': [ref4, ref4*.5, ref4*.1],
             'img_size': 360,
         },
-
+        '4x1x_350': {
+            'sigma_points':[ref4, ref4, ref4],
+            'sigma_links' :[ref4, ref4, ref4],
+            'change_sigma_at_ep': 350,
+            'sigma_points_2':[ref1, ref1, ref1],
+            'sigma_links_2' :[ref1, ref1, ref1],
+            'img_size': 360,
+        },
+        '4x1x_550': {
+            'sigma_points':[ref4, ref4, ref4],
+            'sigma_links' :[ref4, ref4, ref4],
+            'change_sigma_at_ep': 550,
+            'sigma_points_2':[ref1, ref1, ref1],
+            'sigma_links_2' :[ref1, ref1, ref1],
+            'img_size': 360,
+        },
+        '10x1x_350': {
+            'sigma_points':[ref10, ref10, ref10],
+            'sigma_links' :[ref10, ref10, ref10],
+            'change_sigma_at_ep': 350,
+            'sigma_points_2':[ref1, ref1, ref1],
+            'sigma_links_2' :[ref1, ref1, ref1],
+            'img_size': 360,
+        },
+        '10x1x_550': {
+            'sigma_points':[ref10, ref10, ref10],
+            'sigma_links' :[ref10, ref10, ref10],
+            'change_sigma_at_ep': 550,
+            'sigma_points_2':[ref1, ref1, ref1],
+            'sigma_links_2' :[ref1, ref1, ref1],
+            'img_size': 360,
+        },
     }
+
