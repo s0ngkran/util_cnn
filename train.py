@@ -244,7 +244,7 @@ def validation(tr_loss, profile=False):
     global lowest_va_loss, best_ep
     if profile:
         t0 = time.time()
-    if epoch == 1:
+    if True:
         if profile:
             t1 = time.time()
         save_model('last')
