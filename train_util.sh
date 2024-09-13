@@ -39,3 +39,11 @@ te(){
     python test.py $name $args|grep acc>>acc;
 }
 
+pilot(){
+    # should be 4x1x_350 4x1x_550 10x1x_350 10x1x_550
+    tr 4x1x_550 GBlr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
+    tr 10x1x_350 GMlr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
+    tr 4x1x_350 GClr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
+    tr 10x1x_550 GClr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
+}
+
