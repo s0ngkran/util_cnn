@@ -44,7 +44,6 @@ if args.pilot is not None:
     assert CHANGE_SIGMA_AT_EP > 0
     assert SIGMA_POINTS_2[0] > 0
     assert SIGMA_LINKS_2[0] > 0
-    assert args.pilot in []
     print('pilot mode activated')
     print({
         'change_sigma_at_ep': CHANGE_SIGMA_AT_EP,
