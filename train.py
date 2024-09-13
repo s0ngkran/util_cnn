@@ -30,15 +30,31 @@ parser.add_argument('-d', '--device')
 parser.add_argument('-nlr', '--new_learning_rate',  type=int)
 parser.add_argument('-lr', '--learning_rate',  type=int)
 parser.add_argument('-s', '--stopper_min_ep',  type=int)
+parser.add_argument('-se', '--save_every',  type=int)
+parser.add_argument('-pi', '--pilot',  action='store_true')
 args = parser.parse_args()
 print(args)
 
 training = config()[args.config]
+CHANGE_SIGMA_AT_EP = None
+if args.pilot is not None:
+    CHANGE_SIGMA_AT_EP = training['change_sigma_at_ep']
+    SIGMA_POINTS_2 = training['sigma_points_2']
+    SIGMA_LINKS_2 = training['sigma_links_2']
+    assert CHANGE_SIGMA_AT_EP > 0
+    assert SIGMA_POINTS_2[0] > 0
+    assert SIGMA_LINKS_2[0] > 0
+    print('pilot mode activated')
+    print({
+        'change_sigma_at_ep': CHANGE_SIGMA_AT_EP,
+        'sigma_points_2': SIGMA_POINTS_2,
+        'sigma_links_2': SIGMA_LINKS_2,
+    })
+
 params = {
     'name':args.config,
     'config': training,
 }
-
 
 sigma_points = training.get('sigma_points')
 sigma_links = training.get('sigma_links')
@@ -53,7 +69,6 @@ data_kwargs = {
 TRAINING_JSON = 'tr'
 VALIDATION_JSON = 'va'
 BATCH_SIZE = 5 if args.batch_size is None else args.batch_size
-SAVE_EVERY = 1
 LEARNING_RATE = 1e-3 if args.learning_rate is None else 10**args.learning_rate
 TRAINING_NAME = args.name
 N_WORKERS = 10 if args.n_worker is None else args.n_worker
@@ -65,6 +80,7 @@ IS_CONTINUE = args.continue_last
 DEVICE = 'cuda' if args.device is None else args.device
 NEW_LEARNING_RATE = None if args.new_learning_rate is None else 10**args.new_learning_rate
 MIN_STOP = 20 if args.stopper_min_ep is None else args.stopper_min_ep
+SAVE_EVERY = 1000 if args.save_every is None else args.save_every
 print('training name:', TRAINING_NAME)
 
 def feed(dat):
@@ -101,6 +117,16 @@ optimizer = torch.optim.Adam(model.parameters())
 epoch = 0
 lowest_va_loss = 9999999999
 best_ep = 0
+
+def update_sigma(new_sigma_points, new_sigma_links):
+    global model
+    model = Model(
+        new_sigma_points,
+        new_sigma_links,
+        links,
+        img_size=img_size,
+        **model_kwargs).to(DEVICE)
+    model.load_state_dict(model.state_dict())
 
 def get_model_path(label):
     path = os.path.join(SAVE_FOLDER, f'{TRAINING_NAME}.{label}')
@@ -153,6 +179,7 @@ setting.append(f'CHECKPOINT={loaded_path}')
 setting.append(f'CONTINUE_EP={continue_ep}')
 setting.append(f'LOG_DIR={log.dir}')
 setting.append(f'MIN_STOP={MIN_STOP}')
+setting.append(f'SAVE_EVERY={SAVE_EVERY}')
 setting = '\n'.join(setting)
 print()
 print(setting)
@@ -217,7 +244,7 @@ def validation(tr_loss, profile=False):
     global lowest_va_loss, best_ep
     if profile:
         t0 = time.time()
-    if epoch == 1 or epoch % SAVE_EVERY == 0:
+    if epoch == 1:
         if profile:
             t1 = time.time()
         save_model('last')
@@ -269,8 +296,18 @@ def main():
     global lowest_va_loss
     profile = args.profile
     while True:
+        if args.pilot and epoch in [CHANGE_SIGMA_AT_EP]:
+            update_sigma(SIGMA_POINTS_2, SIGMA_LINKS_2)
+            print('update sigma')
+            print({
+                'sigma_points_2': SIGMA_POINTS_2,
+                'sigma_links_2': SIGMA_LINKS_2,
+            })
         tr_loss = train(profile)
         va_loss = validation(tr_loss, profile)
+        if epoch % SAVE_EVERY == 0:
+            save_model(f'{epoch:.0f}')
+            print('save every activated at ep=', epoch)
         if CHECKING: break
         if profile: break
         if stopper(va_loss):
