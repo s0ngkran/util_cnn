@@ -51,13 +51,12 @@ wait_for_file() {
 wait_te(){
     weight=$1
     ep=$2
-    fname=save/${weight}.${ep}
-    echo "waiting ${fname}";
-    wait_for_file $fname;
+    fname=${weight}.${ep}
+    echo "waiting save/${fname}";
+    wait_for_file save/$fname;
     sleep 10
-    te $fname "360 -d cpu -b 2 --weight ${fname}";
-    echo "^${fname}"
-    echo
+    te $fname "360 -d cpu -b 2 --weight save/${fname}";
+    echo "done test $fname"
 }
 
 pilot(){
