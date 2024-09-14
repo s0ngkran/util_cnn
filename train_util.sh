@@ -51,10 +51,12 @@ wait_for_file() {
 wait_te(){
     weight=$1
     ep=$2
-    wait_for_file $weight;
+    fname=save/${weight}.${ep}
+    echo "waiting ${fname}";
+    wait_for_file $fname;
     sleep 120 
-    te nothing "360 -d cpu -b 2 --weight ${weight}.${ep}";
-    echo "^${weight}"
+    te nothing "360 -d cpu -b 2 --weight ${fname}";
+    echo "^${fname}"
     echo
 }
 
