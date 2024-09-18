@@ -39,6 +39,7 @@ parser.add_argument("-s", "--stopper_min_ep", type=int)
 parser.add_argument("-se", "--save_every", type=int)
 parser.add_argument("-pi", "--pilot", action="store_true")
 parser.add_argument("-pi2", "--pilot2", type=int)
+parser.add_argument("-w", "--continue_weight")
 args = parser.parse_args()
 print(args)
 
@@ -62,7 +63,7 @@ if args.pilot is not None:
 assert args.pilot2 > 0  # you can delete this line; message from sk
 if args.pilot2 > 0:
     # need args.continue_last
-    assert args.continue_last
+    assert args.continue_weight
     print()
     print("pilot2 mode activated")
     print("new sigma points =", args.pilot2, "%")
@@ -162,8 +163,10 @@ def get_model_path(label):
 
 
 # load state for amp
-if IS_CONTINUE:
+if IS_CONTINUE or args.continue_weight:
     CONTINUE_PATH = get_model_path("last")
+    if args.continue_weight:
+        CONTINUE_PATH = get_model_path(args.continue_weight)
     print("continue on last epoch")
     print(CONTINUE_PATH)
     print()
@@ -340,12 +343,12 @@ def main():
                     "sigma_links_2": SIGMA_LINKS_2,
                 }
             )
-        if args.pilot2 and epoch > 560+380:
+        if args.pilot2 and epoch > 500+380:
             break
-        if args.pilot2 and epoch in [560 + i * 20 for i in range(20)]:
-            # start 550
-            # change 560, 580, 600, 620, ...
-            # save_every 570, 590, 610, 630, ...
+        if args.pilot2 and epoch in [520 + i * 20 for i in range(20)]:
+            # start 500
+            # change 520, 540, 560, ...
+            # save_every 530, 550, 570, ...
             new_sigma_points = [x * args.pilot2 / 100 for x in sigma_points]
             update_sigma(new_sigma_points, sigma_links)
             print("update only sigma points")
@@ -358,7 +361,7 @@ def main():
 
         tr_loss = train(profile)
         va_loss = validation(tr_loss, profile)
-        if args.pilot2 and epoch in [ 570 + i * 20 for i in range(20)]:
+        if args.pilot2 and epoch in [ 530 + i * 20 for i in range(20)]:
             save_model(f"{epoch:.0f}")
             print("save every activated at ep=", epoch)
         if epoch % SAVE_EVERY == 0:
