@@ -45,7 +45,7 @@ print(args)
 
 training = config()[args.config]
 CHANGE_SIGMA_AT_EP = None
-if args.pilot is not None:
+if args.pilot:
     CHANGE_SIGMA_AT_EP = training["change_sigma_at_ep"]
     SIGMA_POINTS_2 = training["sigma_points_2"]
     SIGMA_LINKS_2 = training["sigma_links_2"]
