@@ -166,7 +166,7 @@ def get_model_path(label):
 if IS_CONTINUE or args.continue_weight:
     CONTINUE_PATH = get_model_path("last")
     if args.continue_weight:
-        CONTINUE_PATH = get_model_path(args.continue_weight)
+        CONTINUE_PATH = os.path.join(SAVE_FOLDER, args.continue_weight)
     print("continue on last epoch")
     print(CONTINUE_PATH)
     print()
