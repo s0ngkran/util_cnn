@@ -150,11 +150,12 @@ best_ep = 0
 
 
 def update_sigma(new_sigma_points, new_sigma_links):
-    global model
+    global model, optimizer
     model = Model(
         new_sigma_points, new_sigma_links, links, img_size=img_size, **model_kwargs
     ).to(DEVICE)
     model.load_state_dict(model.state_dict())
+    optimizer = torch.optim.Adam(model.parameters())
 
 
 def get_model_path(label):
