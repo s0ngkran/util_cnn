@@ -39,11 +39,44 @@ te(){
     python test.py $name $args|grep acc>>acc;
 }
 
+
+wait_for_file() {
+  local file="$1"
+  while [ ! -f "$file" ]; do
+    sleep 200
+  done
+  echo "File $file exists!"
+}
+
+wait_te(){
+    weight=$1
+    ep=$2
+    fname=${weight}.${ep}
+    echo "waiting save/${fname}";
+    wait_for_file save/$fname;
+    sleep 10
+    te $fname "360 -d cpu -b 2 --weight save/${fname}";
+    echo "done test $fname"
+}
+
 pilot(){
     # should be 4x1x_350 4x1x_550 10x1x_350 10x1x_550
     tr 4x1x_550 GBlr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
     tr 10x1x_350 GMlr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
     tr 4x1x_350 GClr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
     tr 10x1x_550 GClr4b10_0 "-pi -se 100 -b 10 -lr -4 -s 700"
+
+    for ep in 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300; do
+        wait_te 4x1x_550_GBlr4b10_0 $ep &
+    done
+    for ep in 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300; do
+        wait_te 10x1x_350_GMlr4b10_0 $ep &
+    done
+    for ep in 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300; do
+        wait_te 4x1x_350_GClr4b10_0 $ep &
+    done
+    for ep in 100 200 300 400 500 600 700 800 900 1000 1100 1200 1300; do
+        wait_te 10x1x_550_GClr4b10_0 $ep &
+    done
 }
 
