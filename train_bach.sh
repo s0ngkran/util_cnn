@@ -118,10 +118,17 @@ source $(dirname $0)/train_util.sh;
     # done
 
 
-for ep in {530..1000..20}
+# for ep in {530..1000..20}
+# do
+#     echo "wait ep$ep...";
+#     wait_te 4x1x_550_HB_0 $ep ;
+# done
+
+
+tr 4x1x_500 H2B_0 "-pi2 95 -b 10 -lr -4 -s 900 -w 4x1x_550_GBlr4b10_0.500"&
+
+for ep in {550..1600..50}
 do
     echo "wait ep$ep...";
-    wait_te 4x1x_550_HB_0 $ep ;
+    wait_te 4x1x_500_H2B_0 $ep ;
 done
-
-

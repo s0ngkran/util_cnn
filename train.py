@@ -152,12 +152,13 @@ best_ep = 0
 
 
 def update_sigma(new_sigma_points, new_sigma_links):
-    global model, optimizer
+    global model, optimizer, sigma_points
     model = Model(
         new_sigma_points, new_sigma_links, links, img_size=img_size, **model_kwargs
     ).to(DEVICE)
     model.load_state_dict(model.state_dict())
     optimizer = torch.optim.Adam(model.parameters())
+    sigma_points = new_sigma_points
 
 
 def get_model_path(label):
@@ -334,7 +335,7 @@ def avg(losses: list):
 
 
 def main():
-    global lowest_va_loss
+    global lowest_va_loss, sigma_points
     profile = args.profile
     while True:
         if args.pilot and epoch in [CHANGE_SIGMA_AT_EP]:
@@ -346,9 +347,9 @@ def main():
                     "sigma_links_2": SIGMA_LINKS_2,
                 }
             )
-        if args.pilot2 and epoch > 500+380:
+        if args.pilot2 and epoch > 550 + 20*50:
             break
-        if args.pilot2 and epoch in [520 + i * 20 for i in range(20)]:
+        if args.pilot2 and epoch in [510 + i * 50 for i in range(20)]:
             # start 500
             # change 520, 540, 560, ...
             # save_every 530, 550, 570, ...
@@ -364,7 +365,7 @@ def main():
 
         tr_loss = train(profile)
         va_loss = validation(tr_loss, profile)
-        if args.pilot2 and epoch in [ 530 + i * 20 for i in range(20)]:
+        if args.pilot2 and epoch in [550 + i * 50 for i in range(20)]:
             save_model(f"{epoch:.0f}")
             print("save every activated at ep=", epoch)
         if epoch % SAVE_EVERY == 0:
