@@ -41,6 +41,7 @@ class Stage(nn.Module):
                   make_standard_block(128, 128, 3),
                   make_standard_block(128, 512, 1, 1, 0)]
         layers += [nn.Conv2d(512, output_feats, 1, 1, 0)]
+        # unneccessary to manual add sigmoid when using nn.BCEWithLogitsLoss
         if add_sigmoid:
             layers += [nn.Sigmoid()]
         return nn.Sequential(*layers)
@@ -54,6 +55,7 @@ class Stage(nn.Module):
                   make_standard_block(128, 128, 7, 1, 3),
                   make_standard_block(128, 128, 1, 1, 0)]
         layers += [nn.Conv2d(128, output_feats, 1, 1, 0)]
+        # unneccessary to manual add sigmoid when using nn.BCEWithLogitsLoss
         if add_sigmoid:
             layers += [nn.Sigmoid()]
         return nn.Sequential(*layers)
