@@ -408,7 +408,7 @@ class Model(PAF):
 
 # torch.Size([5, 19, 90, 90]) -> keypoint -> tfs
 
-def test_bi_mode(device):
+def test_bi_model(device):
     k = [(0.2, 0.3) for i in range(19)]
     keypoints = [k, k]
     n_batch = len(keypoints)
@@ -423,8 +423,24 @@ def test_bi_mode(device):
     print()
     print('passed model bi_mode')
 
+def test_bi_mode_feed(device):
+    k = [(0.2, 0.3) for i in range(19)]
+    keypoints = [k, k]
+    n_batch = len(keypoints)
+    sigma_points = [11.6, 11.6, 11.6]
+    sigma_links = [11.6, 11.6, 11.6]
+    links = [(0, 2) for i in range(18)]
+    img_size = 128
+    model = Model(sigma_points, sigma_links, links, bi_mode=True).to(device)
+    input_tensor = torch.rand(n_batch, 3, img_size, img_size).to(device)
+    print(input_tensor.shape, "input tensor")
+    pred = model(input_tensor)
+    loss = model.cal_loss(pred, keypoints, "cpu")
+    print("loss", loss)
+
 if __name__ == "__main__":
-    test_bi_mode('cuda')
+    # test_bi_model('cuda')
+    test_bi_mode_feed('cuda')
     # test_forword("cpu")
     # test_loss('cuda')
     # test_with_loader('cpu')
