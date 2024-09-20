@@ -21,30 +21,32 @@ def init(model):
             m.bias.data.zero_()
 
 class Stage(nn.Module):
-    def __init__(self, backend_outp_feats, n_joints, n_paf, stage1):
+    def __init__(self, backend_outp_feats, n_joints, n_paf, stage1, add_sigmoid=False):
         super(Stage, self).__init__()
         inp_feats = backend_outp_feats
         if stage1:
             self.block1 = self.make_paf_block_stage1(inp_feats, n_joints)
-            self.block2 = self.make_paf_block_stage1(inp_feats, n_paf)
+            self.block2 = self.make_paf_block_stage1(inp_feats, n_paf, add_sigmoid)
         else:
             inp_feats = backend_outp_feats + n_joints + n_paf
             self.block1 = self.make_paf_block_stage2(inp_feats, n_joints)
-            self.block2 = self.make_paf_block_stage2(inp_feats, n_paf)
+            self.block2 = self.make_paf_block_stage2(inp_feats, n_paf, add_sigmoid)
         init(self.block1)
         init(self.block2)
 
 
-    def make_paf_block_stage1(self, inp_feats, output_feats):
+    def make_paf_block_stage1(self, inp_feats, output_feats, add_sigmoid=False):
         layers = [make_standard_block(inp_feats, 128, 3),
                   make_standard_block(128, 128, 3),
                   make_standard_block(128, 128, 3),
                   make_standard_block(128, 512, 1, 1, 0)]
         layers += [nn.Conv2d(512, output_feats, 1, 1, 0)]
+        if add_sigmoid:
+            layers += [nn.Sigmoid()]
         return nn.Sequential(*layers)
 
 
-    def make_paf_block_stage2(self, inp_feats, output_feats):
+    def make_paf_block_stage2(self, inp_feats, output_feats, add_sigmoid=False):
         layers = [make_standard_block(inp_feats, 128, 7, 1, 3),
                   make_standard_block(128, 128, 7, 1, 3),
                   make_standard_block(128, 128, 7, 1, 3),
@@ -52,6 +54,8 @@ class Stage(nn.Module):
                   make_standard_block(128, 128, 7, 1, 3),
                   make_standard_block(128, 128, 1, 1, 0)]
         layers += [nn.Conv2d(128, output_feats, 1, 1, 0)]
+        if add_sigmoid:
+            layers += [nn.Sigmoid()]
         return nn.Sequential(*layers)
 
 
