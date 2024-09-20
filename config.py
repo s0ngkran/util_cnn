@@ -179,5 +179,31 @@ def config():
             'sigma_links_2' :[ref1, ref1, ref1],
             'img_size': 360,
         },
+        'try': {
+            'sigma_points':[ref10, ref10, ref10],
+            'sigma_links' :[ref10, ref10, ref10],
+            'change_sigma_at_ep': 2,
+            'sigma_points_2':[ref1, ref1, ref1],
+            'sigma_links_2' :[ref1, ref1, ref1],
+            'img_size': 360,
+        },
+        'bi90': {
+            'sigma_points': [ref4, ref4, ref4],
+            'sigma_links': [ref4, ref4, ref4],
+            'img_size': 360,
+            'bi_thres': 0.9,
+        },
+        'bi50': {
+            'sigma_points': [ref4, ref4, ref4],
+            'sigma_links': [ref4, ref4, ref4],
+            'img_size': 360,
+            'bi_thres': 0.5,
+        },
+        'bi10': {
+            'sigma_points': [ref4, ref4, ref4],
+            'sigma_links': [ref4, ref4, ref4],
+            'img_size': 360,
+            'bi_thres': 0.1,
+        },
     }
 

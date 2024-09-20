@@ -30,11 +30,13 @@ class PAF(nn.Module):
         img_size=720,
         no_weight=False,
         bi_mode=False,
+        bi_thres=0,
         **kw,
     ):
         super().__init__()
         if bi_mode:
             assert n_stage == 3
+        self.bi_mode=bi_mode
         self.sigma_points = sigma_points
         self.sigma_links = sigma_links
         self.links = links
@@ -50,20 +52,20 @@ class PAF(nn.Module):
         assert len(sigma_links) == n_stage
         self.backend = VGG19(no_weight=no_weight)
         backend_outp_feats = 128
-        add_sigmoid = bi_mode
-        self.fake_stages = [add_sigmoid] # for testing
-        stages = [Stage(backend_outp_feats, n_point, n_paf, True, add_sigmoid)]
+        stages = [Stage(backend_outp_feats, n_point, n_paf, True)]
         for i in range(n_stage - 1):
-            if bi_mode:
-                add_sigmoid = i == 0
-            else:
-                add_sigmoid = False
-            self.fake_stages.append(add_sigmoid)
-            stages.append(Stage(backend_outp_feats, n_point, n_paf, False, add_sigmoid))
+            stages.append(Stage(backend_outp_feats, n_point, n_paf, False))
         self.stages = nn.ModuleList(stages)
         self.gt_gen = self._init_gt_generator(
             img_size, sigma_points, sigma_links, links
         )
+        self.bce = None
+        self.bi_thres = bi_thres
+        if bi_mode:
+            assert bi_thres > 0
+            self.bce = nn.BCEWithLogitsLoss()
+            print()
+            print('message from model: bi_mode activated')
 
     def __str__(self):
         txt = ["PAF model"]
@@ -86,6 +88,9 @@ class PAF(nn.Module):
             paf_outs.append(paf_out)
             cur_feats = torch.cat([img_feats, heatmap_out, paf_out], 1)
         return heatmap_outs, paf_outs
+
+    def to_binary(self, tensor, threshold):
+        return (tensor >= threshold).float()
 
     def cal_loss(self, pred, gt, device="cuda"):
         gt = self.gen_gt(gt)
@@ -119,8 +124,28 @@ class PAF(nn.Module):
             # print(batch_gts.shape, 'gts')
             # print(batch_gtl.shape, 'gtl')
             # t3 = time.time()
-            loss_point += F.mse_loss(heatmaps, batch_gts)
+
+            # handle bi_mode
+            if self.bi_mode and i <= 1:
+                # already assert n_stages == 3 for bi_mode
+                batch_gts = self.to_binary(batch_gts, self.bi_thres)
+                loss_point += self.bce(heatmaps, batch_gts)
+            else:
+                loss_point += F.mse_loss(heatmaps, batch_gts)
+
             loss_link += F.mse_loss(pafs, batch_gtl)
+            # save img of each batch_gts
+
+            # for gts in batch_gts:
+            #     gts = gts[0]
+            #     print('gts', gts.shape)
+            #     x = to_pil_image(gts)
+            #     x.save('temptemp.jpg')
+            #     break
+
+                
+            # print('p stage',i, heatmaps.shape, batch_gts.shape)
+            # print('l stage',i, pafs.shape, batch_gtl.shape)
             # t4 = time.time()
         # print(t2-t1, 'interpolate')
         # print(t3-t2, 'prepare gt')
@@ -382,6 +407,7 @@ class Model(PAF):
         n_stage=3,
         img_size=720,
         bi_mode=False,
+        bi_thres=0,
         **kw,
     ):
         super().__init__(
@@ -393,6 +419,7 @@ class Model(PAF):
             n_stage=n_stage,
             img_size=img_size,
             bi_mode=bi_mode,
+            bi_thres=bi_thres,
             **kw,
         )
 
@@ -424,26 +451,71 @@ def test_bi_model(device):
     print('passed model bi_mode')
 
 def test_bi_mode_feed(device):
-    k = [(0.2, 0.3) for i in range(19)]
-    keypoints = [k, k]
-    n_batch = len(keypoints)
-    sigma_points = [11.6, 11.6, 11.6]
-    sigma_links = [11.6, 11.6, 11.6]
-    links = [(0, 2) for i in range(18)]
-    img_size = 128
-    model = Model(sigma_points, sigma_links, links, bi_mode=True).to(device)
-    input_tensor = torch.rand(n_batch, 3, img_size, img_size).to(device)
-    print(input_tensor.shape, "input tensor")
-    pred = model(input_tensor)
-    loss = model.cal_loss(pred, keypoints, "cpu")
-    print("loss", loss)
+    from data01 import MyDataset
+    from torch.utils.data import DataLoader
+
+    bi_mode = True
+    bi_thres = 0.7
+    img_size = 720
+    img_size = 64
+    model = Model(
+        [10, 10, 10],
+        [10, 10, 10],
+        MyDataset.get_link(),
+        img_size=img_size,
+        bi_mode=bi_mode,
+        bi_thres=bi_thres,
+    ).to(device)
+    dataset = MyDataset("va", img_size, test_mode=True)
+    dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
+    """
+    def __getitem__(self, idx):
+        ans = {
+            'inp': img,
+            'keypoint': data.keypoint,
+            'poh_gt': data.gt,
+            'raw': data,
+        }
+        return ans
+    """
+    t = []
+    m = []
+    for i, dat in enumerate(dataloader):
+        t0 = time.time()
+        img = dat["inp"].to(device)
+        keypoint = dat["keypoint"]
+        print(img.shape, "inp shape from loader")
+
+        pred = model(img)
+        print(pred[0][-1].shape)
+        # del img
+        # torch.cuda.empty_cache()
+        t1 = time.time()
+        device = "cuda"
+        loss = model.cal_loss(pred, keypoint, device)
+        t2 = time.time()
+        loss.backward()
+        t3 = time.time()
+        # print(loss, 'loss', )
+        # print(t2-t1, 'time loss', device)
+        # print(t3-t2, 'time backward', device)
+        t.append(t3 - t0)
+        # mem = get_gpu_memory_info()
+        # m.append(mem)
+        break
+        if i > 2:
+            break
+    print(sum(t), "sum time", device)
+    print(m)
+    print('loss', loss)
 
 if __name__ == "__main__":
+    device = 'cuda'
     # test_bi_model('cuda')
-    test_bi_mode_feed('cuda')
+    # test_bi_mode_feed(device)
     # test_forword("cpu")
     # test_loss('cuda')
-    # test_with_loader('cpu')
+    # test_with_loader(device)
     # for dataset in ['te', 'va', 'tr']:
     #     for img_size in [32, 64, 128, 256, 360, 720]:
     #         test_convert_heat('cpu', dataset, img_size)

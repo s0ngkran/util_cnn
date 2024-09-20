@@ -62,7 +62,7 @@ if args.pilot:
     )
 
 pilot2_num = 0 if args.pilot2 is None else int(args.pilot2)
-assert pilot2_num > 0  # you can delete this line; message from sk
+# assert pilot2_num > 0  # you can delete this line; message from sk
 if pilot2_num > 0:
     # need args.continue_last
     assert args.continue_weight
@@ -81,7 +81,14 @@ sigma_links = training.get("sigma_links")
 img_size = training.get("img_size")
 
 assert args.device in [None, "cpu", "cuda"]
-model_kwargs = {}
+
+bi_mode = 'bi_thres' in training 
+bi_thres = training.get('bi_thres')
+model_kwargs = {
+    'img_size': img_size,
+    'bi_mode': bi_mode,
+    'bi_thres': bi_thres,
+}
 data_kwargs = {}
 ############################ config ###################
 TRAINING_JSON = "tr"
@@ -141,9 +148,7 @@ validation_set_loader = DataLoader(
 assert len(training_set) >= BATCH_SIZE, f"batch={BATCH_SIZE}; please reduce batch size"
 
 links = MyDataset.get_link()
-model = Model(sigma_points, sigma_links, links, img_size=img_size, **model_kwargs).to(
-    DEVICE
-)
+model = Model(sigma_points, sigma_links, links, **model_kwargs).to(DEVICE)
 stopper = Stopper(min_epoch=MIN_STOP)
 optimizer = torch.optim.Adam(model.parameters())
 epoch = 0
@@ -154,7 +159,7 @@ best_ep = 0
 def update_sigma(new_sigma_points, new_sigma_links):
     global model, optimizer, sigma_points
     model = Model(
-        new_sigma_points, new_sigma_links, links, img_size=img_size, **model_kwargs
+        new_sigma_points, new_sigma_links, links, **model_kwargs
     ).to(DEVICE)
     model.load_state_dict(model.state_dict())
     optimizer = torch.optim.Adam(model.parameters())
