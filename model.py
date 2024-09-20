@@ -409,7 +409,6 @@ class Model(PAF):
 # torch.Size([5, 19, 90, 90]) -> keypoint -> tfs
 
 def test_bi_mode(device):
-
     k = [(0.2, 0.3) for i in range(19)]
     keypoints = [k, k]
     n_batch = len(keypoints)
@@ -417,10 +416,15 @@ def test_bi_mode(device):
     sigma_links = [11.6, 11.6, 11.6]
     links = [(0, 2) for i in range(18)]
     model = Model(sigma_points, sigma_links, links).to(device)
-    print(model.fake_stages)
+    assert model.fake_stages == [False, False, False]
+
+    model = Model(sigma_points, sigma_links, links, bi_mode=True).to(device)
+    assert model.fake_stages == [True, True, False]
+    print()
+    print('passed model bi_mode')
 
 if __name__ == "__main__":
-    test_bi_mode('cpu')
+    test_bi_mode('cuda')
     # test_forword("cpu")
     # test_loss('cuda')
     # test_with_loader('cpu')
