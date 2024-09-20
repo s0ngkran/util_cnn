@@ -80,3 +80,15 @@ pilot(){
     done
 }
 
+tr_te_360(){
+    config=$1
+    name=$2
+    args=$3
+
+    wait_gpu 9;
+    tr $config $name $args
+    echo "done $config $name";
+    sleep 100;
+    te ${config}_${name} "360 -d cuda -b 10";
+    echo "^auto run test()" >> acc;
+}
