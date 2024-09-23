@@ -62,7 +62,6 @@ if args.pilot:
     )
 
 pilot2_num = 0 if args.pilot2 is None else int(args.pilot2)
-assert pilot2_num > 0  # you can delete this line; message from sk
 if pilot2_num > 0:
     # need args.continue_last
     assert args.continue_weight
