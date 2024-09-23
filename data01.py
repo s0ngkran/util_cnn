@@ -43,9 +43,9 @@ class Data:
         assert len(keypoint) == 19
         palm_ind_list = [i for i in range(7, 19)]
         palm_ind_list.remove(17)  # remove pinky
-        index_finger_tip = keypoint[0]
         palm = [keypoint[i] for i in palm_ind_list]
         assert len(palm) == 11
+        index_finger_tip = keypoint[0]
         dists = torch.tensor([get_dist(p, index_finger_tip) for p in palm])
         ind = torch.argmin(dists)
         ind = ind.item()

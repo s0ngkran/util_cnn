@@ -13,6 +13,9 @@ import torch.nn as nn
 loss_func = nn.CrossEntropyLoss()
 from argparse import ArgumentParser
 
+def do_nothing(k):
+    return k
+
 if __name__ == '__main__':
 
     parser = ArgumentParser()
@@ -22,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
     parser.add_argument('-d', '--device') 
     parser.add_argument('--weight') 
+    parser.add_argument('--pred_keypoints') 
     args = parser.parse_args()
     assert args.device in [None, 'cpu', 'cuda']
     print(args)
@@ -77,6 +81,7 @@ if __name__ == '__main__':
         pred_list = []
         gt_list = []
         key_list = []
+        pred_keypoints = []
         n = len(testing_set_loader)
         with torch.no_grad():
             for iteration, dat in enumerate(testing_set_loader):
@@ -84,14 +89,19 @@ if __name__ == '__main__':
                 output = model(inp) 
                 pred_batch = model.get_pred(output, Data.pred_from_keypoint)
                 pred_list = pred_list + pred_batch # indexes
+
                 gt_list.extend([gt for gt in dat['gt']]) 
                 key_list.extend([k for k in dat['key']])
+                if args.pred_keypoints:
+                    pred_keypoints_batch = model.get_pred(output, do_nothing)
+                    pred_keypoints = pred_keypoints + pred_keypoints_batch
 
                 print('iter',iteration+1, '/', n, f'ex: pr{pred_batch[0]}_gt{dat["gt"][0]}')
                 # if iteration > 10: break
             assert len(gt_list) == len(pred_list)
             out = {
                     'pred_list': pred_list,
+                    'pred_keypoints': pred_keypoints,
                     'gt_list': gt_list,
                     'key_list': key_list,
                   }
