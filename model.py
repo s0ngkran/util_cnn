@@ -167,6 +167,51 @@ class PAF(nn.Module):
         keypoint_batch = self.get_keypoints(output)
         pred_batch = [func(k) for k in keypoint_batch]
         return pred_batch
+    
+    @staticmethod
+    def gt_batch_to_list(gt_keypoints):
+        result = [[] for _ in range(len(gt_keypoints[0][0]))]  # Initialize list of 5 elements (for 5 batches)
+        
+        for keypoints in gt_keypoints:  # Iterate over the 19 keypoints
+            x_positions, y_positions = keypoints  # Unpack the x and y positions
+            
+            for i in range(len(x_positions)):  # For each batch (5 in this case)
+                x = x_positions[i].item()  # Get the x value for the batch
+                y = y_positions[i].item()  # Get the y value for the batch
+                result[i].append((y, x))  # Append the (x, y) tuple for the current keypoint
+                
+        return result
+    
+    @staticmethod
+    def get_keypoint_from_a_heatmap(heatmap, original_size):
+        '''
+        |0|1|2|
+        0 -> 0.5/3 = 0+0.5/3 
+        1 -> 1.5/3 = 1+0.5/3
+        2 -> 2.5/3 = 2+0.5/3
+        '''
+        keypoint = (heatmap==torch.max(heatmap)).nonzero()[0]
+        keypoint = torch.div(keypoint + 0.5, original_size)
+        return keypoint.tolist()
+
+    def get_keypoint_batch_by_scale_up(self, output, device='cuda'):
+        heatmap_outs, paf_outs = output
+        # scale up each out from 90 to 720
+        original_size = (self.img_size, self.img_size)
+
+        last_heatmaps = heatmap_outs[-1]
+        n_batch = len(last_heatmaps)
+        # scale to 720 (original size)
+        heatmaps_original_size = F.interpolate(last_heatmaps, size=original_size, mode="bilinear").to(
+            device
+        )
+
+        keypoint_batch = []
+        for batch in range(n_batch):
+            heatmaps = heatmaps_original_size[batch]
+            keypoints = [PAF.get_keypoint_from_a_heatmap(heatmap, original_size[0]) for heatmap in heatmaps]
+            keypoint_batch.append(keypoints)
+        return keypoint_batch
 
     def get_keypoints(self, output, from_gt=False):
         if from_gt:

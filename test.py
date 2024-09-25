@@ -82,6 +82,7 @@ if __name__ == '__main__':
         gt_list = []
         key_list = []
         pred_keypoints = []
+        gt_keypoints = []
         n = len(testing_set_loader)
         with torch.no_grad():
             for iteration, dat in enumerate(testing_set_loader):
@@ -101,10 +102,10 @@ if __name__ == '__main__':
                 key_list.extend([k for k in dat['key']])
                 if args.pred_keypoints:
                     # pred_keypoints_batch = model.get_pred(output, lambda keypoints: [k/output_size for k in keypoints])
-                    pred_keypoints_batch = model.get_pred(output, lambda keypoints: [[i/output_size for i in k] for k in keypoints])
-                    pred_keypoints = pred_keypoints + pred_keypoints_batch
-                    print('pred_keypoints_batch', pred_keypoints_batch)
-                    # 1/0
+                    pred_keypoints_batch = model.get_keypoint_batch_by_scale_up(output) # tested
+                    pred_keypoints = pred_keypoints + pred_keypoints_batch 
+                    gt_keypoints_ = model.gt_batch_to_list(dat['keypoint'])
+                    gt_keypoints = gt_keypoints + gt_keypoints_
 
                 print('iter',iteration+1, '/', n, f'ex: pr{pred_batch[0]}_gt{dat["gt"][0]}')
                 # if iteration > 10: break
@@ -112,6 +113,7 @@ if __name__ == '__main__':
             out = {
                     'pred_list': pred_list,
                     'pred_keypoints': pred_keypoints,
+                    'gt_keypoints': gt_keypoints,
                     'gt_list': gt_list,
                     'key_list': key_list,
                   }
