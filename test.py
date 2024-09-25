@@ -13,6 +13,9 @@ import torch.nn as nn
 loss_func = nn.CrossEntropyLoss()
 from argparse import ArgumentParser
 
+def do_nothing(k):
+    return k
+
 if __name__ == '__main__':
 
     parser = ArgumentParser()
@@ -22,6 +25,7 @@ if __name__ == '__main__':
     parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
     parser.add_argument('-d', '--device') 
     parser.add_argument('--weight') 
+    parser.add_argument('--pred_keypoints', action="store_true") 
     args = parser.parse_args()
     assert args.device in [None, 'cpu', 'cuda']
     print(args)
@@ -77,21 +81,39 @@ if __name__ == '__main__':
         pred_list = []
         gt_list = []
         key_list = []
+        pred_keypoints = []
+        gt_keypoints = []
         n = len(testing_set_loader)
         with torch.no_grad():
             for iteration, dat in enumerate(testing_set_loader):
                 inp = dat['inp'].to(DEVICE)
                 output = model(inp) 
+
+                # try
+                heats = output[0]
+                assert len(heats)==3
+                last = heats[2]
+                output_size = last.shape[-1]
+
                 pred_batch = model.get_pred(output, Data.pred_from_keypoint)
                 pred_list = pred_list + pred_batch # indexes
+
                 gt_list.extend([gt for gt in dat['gt']]) 
                 key_list.extend([k for k in dat['key']])
+                if args.pred_keypoints:
+                    # pred_keypoints_batch = model.get_pred(output, lambda keypoints: [k/output_size for k in keypoints])
+                    pred_keypoints_batch = model.get_keypoint_batch_by_scale_up(output) # tested
+                    pred_keypoints = pred_keypoints + pred_keypoints_batch 
+                    gt_keypoints_ = model.gt_batch_to_list(dat['keypoint'])
+                    gt_keypoints = gt_keypoints + gt_keypoints_
 
                 print('iter',iteration+1, '/', n, f'ex: pr{pred_batch[0]}_gt{dat["gt"][0]}')
                 # if iteration > 10: break
             assert len(gt_list) == len(pred_list)
             out = {
                     'pred_list': pred_list,
+                    'pred_keypoints': pred_keypoints,
+                    'gt_keypoints': gt_keypoints,
                     'gt_list': gt_list,
                     'key_list': key_list,
                   }
