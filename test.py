@@ -102,7 +102,7 @@ if __name__ == '__main__':
                 key_list.extend([k for k in dat['key']])
                 if args.pred_keypoints:
                     # pred_keypoints_batch = model.get_pred(output, lambda keypoints: [k/output_size for k in keypoints])
-                    pred_keypoints_batch = model.get_keypoint_batch_by_scale_up(output) # tested
+                    pred_keypoints_batch = model.get_keypoint_batch_by_scale_up(output, device=DEVICE) # tested
                     pred_keypoints = pred_keypoints + pred_keypoints_batch 
                     gt_keypoints_ = model.gt_batch_to_list(dat['keypoint'])
                     gt_keypoints = gt_keypoints + gt_keypoints_
