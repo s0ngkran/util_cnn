@@ -88,6 +88,7 @@ class MyDataset(Dataset):
 
         if not os.path.exists(self.cache_folder):
             os.mkdir(self.cache_folder)
+        self.cache = {}
 
     def get_data(self, key):
         for d in self.data:
@@ -222,7 +223,10 @@ class MyDataset(Dataset):
         return cropped_image, keypoint
 
     def load_img(self, image_path, keypoint, log=False):
-        image_pil = Image.open(image_path)
+        
+        key = image_path
+        image_pil = self.load_cache(key, lambda: Image.open(image_path))
+
         # 0-255
         if log:
             print()
@@ -234,21 +238,36 @@ class MyDataset(Dataset):
             mn, mx = tensor.min(), tensor.max()
             print("bef -> mn, mx =", mn, mx)
 
-        if self.no_aug or self.dataset == "testing":
-            trans = [
-                transforms.Resize(self.img_size),
-                transforms.ToTensor(),
-            ]
-            preprocess = transforms.Compose(trans)
-            image_tensor = preprocess(image_pil)
+        if self.no_aug or self.dataset == "te":
+            key = image_path + 't'
+            image_tensor = self.load_cache(key, lambda: self.do_totensor(image_pil))
         else:
             image_tensor, keypoint = self.do_transform(image_pil, keypoint)
+
         if log:
             # print min max of image
             mn, mx = image_tensor.min(), image_tensor.max()
             print("aft -> mn, mx =", mn, mx)
 
         return image_tensor, keypoint
+    
+    def load_cache(self, key, func):
+        if key in self.cache:
+            data = self.cache[key]
+        else:
+            data = func()
+            self.cache[key] = data
+        return data
+
+    def do_totensor(self, image_pil):
+        trans = [
+            transforms.Resize(self.img_size),
+            transforms.ToTensor(),
+        ]
+        preprocess = transforms.Compose(trans)
+        image_tensor = preprocess(image_pil)
+        return image_tensor
+
 
     def do_transform(self, image_pil, keypoint):
         max_angle_degree = 45
@@ -312,11 +331,29 @@ class MyDataset(Dataset):
 
 
 def test():
+    import time
     img_size = 360
-    data = MyDataset("va", img_size)
+    data = MyDataset("tr", img_size)
+    t0 = time.time()
     for d in data:
         d = d["inp"].shape
-        break
+    t1 = time.time()
+    print('loaded')
+    print( t1-t0, 's')
+
+    t0 = time.time()
+    for d in data:
+        d = d["inp"].shape
+    t1 = time.time()
+    print(t1-t0, 's')
+
+    t0 = time.time()
+    for d in data:
+        d = d["inp"].shape
+    t1 = time.time()
+    print(t1-t0, 's')
+    time.sleep(10)
+    
 
 
 def plot_img(img, keypoint=None):
@@ -359,5 +396,5 @@ if __name__ == "__main__":
     # random.seed(0)
     # torch.manual_seed(0)
 
-    # test()
-    plot()
+    test()
+    # plot()
