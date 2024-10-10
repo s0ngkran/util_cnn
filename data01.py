@@ -18,7 +18,7 @@ except:
 
 root = "../poh_vr_1k"
 if not os.path.exists(root):
-    root = "../../Research/data_zip/poh_vr_1k"
+    root = "../Research/data_zip/poh_vr_1k"
 
 
 @dataclass

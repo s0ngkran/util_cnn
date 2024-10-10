@@ -1,26 +1,60 @@
 import torch
 import time
+
 try:
     import matplotlib.pyplot as plt
 except:
     pass
 
 class GTGen:
-    def __init__(self, img_size, sigma_points, sigma_links, links, n_keypoint=19):
+    def __init__(self, img_size, sigma_points, sigma_links, links, n_keypoint=19, **kw):
         self.img_size = img_size
         self.links = links
         self.n_keypoint = n_keypoint
         self.sigma_points = sigma_points
         self.sigma_links = sigma_links
-        gaussian_size = img_size *2
+        self.is_custom_mode = kw.get("is_custom_mode", False)
+        self.is_use_old_mode = kw.get("is_use_old_mode", False)
+
+        if not self.is_custom_mode and not self.is_use_old_mode:
+            self.is_use_old_mode = True
+        if self.is_custom_mode and self.is_use_old_mode:
+            raise ValueError("can't use custom mode and old mode at the same time")
+
+        # print('-----')
+
+        if not self.is_use_old_mode:
+            for x in sigma_links:
+                assert 0 <= x <= 1, f"sigma link should in range [0, 1] {x}"
+            for x in sigma_points:
+                assert 0 <= x <= 1, f"sigma point should in range [0, 1] {x}"
+
+        if self.is_custom_mode:
+            assert len(sigma_links) == len(links), f"{len(sigma_links)} {len(links)}"
+            assert len(sigma_points) == self.n_keypoint, f"{len(sigma_points)=} {n_keypoint=}"
+
+        gaussian_size = img_size * 2
         big_gaussians = {}
-        for sigma_point in sigma_points:
-            if str(sigma_point) in big_gaussians:
-                continue
-            m = self._gen_gaussian_map(gaussian_size, gaussian_size, sigma_point)
-            big_gaussians[str(sigma_point)] = m
-        self.big_gaussians = big_gaussians
-    
+        if self.is_use_old_mode:
+            for sigma_point in sigma_points:
+                if str(sigma_point) in big_gaussians:
+                    continue
+                m = self._gen_gaussian_map(gaussian_size, gaussian_size, sigma_point)
+                big_gaussians[str(sigma_point)] = m
+            self.big_gaussians = big_gaussians
+        else:
+            for sigma_point in sigma_points:
+                assert (
+                    0 <= sigma_point <= 1
+                ), f"sigma point should in range [0, 1] but {sigma_point}"
+                if str(sigma_point) in big_gaussians:
+                    continue
+                m = self._gen_gaussian_map(
+                    gaussian_size, gaussian_size, sigma_point * self.img_size
+                )
+                big_gaussians[str(sigma_point)] = m
+            self.big_gaussians = big_gaussians
+
     def __call__(self, keypoints):
         keypoints = self._handle_keypoint_batch(keypoints)
         batch = []
@@ -28,18 +62,19 @@ class GTGen:
             gt_list = self._gen_one_img(keypoint)
             batch.append(gt_list)
         return batch
-    def time(self, keypoints):
+
+    def time(self, keypoints, **kw):
         t1 = time.time()
         keypoints = self._handle_keypoint_batch(keypoints)
         t2 = time.time()
         batch = []
         for keypoint in keypoints:
-            assert len(keypoint) == self.n_keypoint, f'{len(keypoint)}'
+            assert len(keypoint) == self.n_keypoint, f"{len(keypoint)}"
             gt_list = self._gen_one_img(keypoint)
             batch.append(gt_list)
         t3 = time.time()
-        print(t2-t1, 'handle keypoint')
-        print(t3-t2, 'gen gt')
+        print(t2 - t1, "handle keypoint")
+        print(t3 - t2, "gen gt")
         return batch
 
     def _handle_keypoint_batch(self, keypoints):
@@ -56,12 +91,11 @@ class GTGen:
                 kps[b, i, 1] = y[b]
         return kps
 
-
     def _gen_one_img(self, keypoint):
         # t0 = time.time()
         size = self.img_size
-        x_list = [k[0]*size for k in keypoint]
-        y_list = [k[1]*size for k in keypoint]
+        x_list = [k[0] * size for k in keypoint]
+        y_list = [k[1] * size for k in keypoint]
         xy = x_list, y_list
         gt_list = []
         for sp, sl in zip(self.sigma_points, self.sigma_links):
@@ -85,32 +119,47 @@ class GTGen:
         y = torch.linspace(-height / 2, height / 2, height)
         # already add indexing but the WARNING still remains
         try:
-            xv, yv = torch.meshgrid(x, y, indexing='ij')
-        except:
+            xv, yv = torch.meshgrid(x, y, indexing="ij")
+        except:  # noqa: E722
             xv, yv = torch.meshgrid(x, y)
 
-        gaussian_map = torch.exp(-(xv ** 2 + yv ** 2) / (sigma ** 2))
+        gaussian_map = torch.exp(-(xv**2 + yv**2) / (sigma**2))
         # print(gaussian_map.shape) # == (width, hight)
         return gaussian_map
 
-    def _gen_gts(self, x_list, y_list, sigma_point, **kw):
-        big_gaussian_map = self.big_gaussians[str(sigma_point)]
+    def _gen_gts(self, x_list, y_list, sigma_point):
+        big_gaussian_map = None
+        if self.is_use_old_mode:
+            big_gaussian_map = self.big_gaussians[str(sigma_point)]
+        if self.is_custom_mode:
+            assert len(x_list) == len(self.sigma_points)
+
         size = self.img_size
         tensor_gaussian_map = torch.zeros((len(x_list), size, size))
         for i in range(len(x_list)):
+            if self.is_custom_mode:
+                sigma_point = self.sigma_points[i]
+                big_gaussian_map = self.big_gaussians[str(sigma_point)]
             # crop gaussian map by centering on keypoint
             xi, yi = int(x_list[i]), int(y_list[i])
             # print(xi, yi)
-            gaus = big_gaussian_map[size-yi:size*2 - yi, size-xi:size*2 - xi]
+            gaus = big_gaussian_map[
+                size - yi : size * 2 - yi, size - xi : size * 2 - xi
+            ]
             # if this line error, please check the keypoint is in [0, 1]?
             tensor_gaussian_map[i] = gaus
         return tensor_gaussian_map
 
-    def _gen_gtl(self, x_list, y_list, sigma_link, **kw):
+    def _gen_gtl(self, x_list, y_list, sigma_link):
+        if self.is_custom_mode:
+            sigma_links = self.sigma_links
         links = self.links
         size = self.img_size
         gt_link = torch.zeros((len(links) * 2, size, size))
         for i, (p1, p2) in enumerate(links):
+            sigma_link = (
+                sigma_link if not self.is_custom_mode else sigma_links[i] * size
+            )
             # generate paf
             p1 = torch.tensor([y_list[p1], x_list[p1], 1])
             p2 = torch.tensor([y_list[p2], x_list[p2], 1])
@@ -120,9 +169,9 @@ class GTGen:
         return gt_link
 
     def _generate_paf(self, p1, p2, size, sigma_link):
-        paf = torch.zeros((2, size, size)) # (xy, 720, 720)
+        paf = torch.zeros((2, size, size))  # (xy, 720, 720)
         small_number = 1e-6
-        
+
         if p1[2] > 0 and p2[2] > 0:  # Check visibility flags
             diff = p2[:2] - p1[:2]
             # convert to unit vector
@@ -130,7 +179,7 @@ class GTGen:
             # print()
             # print(norm, 'norm')
             # print(diff, 'diff')
-            
+
             # if norm > small_number, then diff is not zero vector
             if norm > small_number:
                 # unit vector
@@ -144,9 +193,11 @@ class GTGen:
                 dist_x = x - p1[0]
                 dist_y = y - p1[1]
 
-                dist_along = v[0] *  dist_x + v[1] * dist_y
-                dist_perpendicular = torch.abs(v_perpendicular[0] * dist_x + v_perpendicular[1] * dist_y)
-                
+                dist_along = v[0] * dist_x + v[1] * dist_y
+                dist_perpendicular = torch.abs(
+                    v_perpendicular[0] * dist_x + v_perpendicular[1] * dist_y
+                )
+
                 # mask distance
                 mask1 = dist_along >= 0
                 mask2 = dist_along <= norm
@@ -159,63 +210,87 @@ class GTGen:
         # convert to torch
         # paf = torch.tensor(paf)
         paf = paf.clone().detach()
-        return paf 
+        return paf
 
     def test_gen_gts(self):
-        print('test gen gts')
+        print("test gen gts")
 
         sigma = 11.6
-        keypoint = [(0.1,0.3),(0.4,0.1)]
+        keypoint = [(0.1, 0.3), (0.4, 0.1)]
         size = 720
-        x_list = [k[0]*size for k in keypoint]
-        y_list = [k[1]*size for k in keypoint]
+        x_list = [k[0] * size for k in keypoint]
+        y_list = [k[1] * size for k in keypoint]
         gts = self._gen_gts(x_list, y_list, sigma)
-        assert gts.shape == torch.Size([len(keypoint),size,size]), f'{gts.shape}'
+        assert gts.shape == torch.Size([len(keypoint), size, size]), f"{gts.shape}"
         plt.imshow(gts[0])
         plt.show()
 
     def test_gen_gtl(self):
-        print('test gen gtl')
+        print("test gen gtl")
         size, sigma = 720, 11.6
 
-        keypoint = [(0.1,0.3),(0.4,0.1)]
-        x_list = [k[0]*size for k in keypoint]
-        y_list = [k[1]*size for k in keypoint]
+        keypoint = [(0.1, 0.3), (0.4, 0.1)]
+        x_list = [k[0] * size for k in keypoint]
+        y_list = [k[1] * size for k in keypoint]
         gtl = self._gen_gtl(x_list, y_list, sigma)
-        assert gtl.shape == torch.Size([len(keypoint),size,size]), f'{gtl.shape}'
+        assert gtl.shape == torch.Size([len(keypoint), size, size]), f"{gtl.shape}"
         plt.imshow(gtl[0])
         plt.show()
 
+    @staticmethod
+    def plot_first_heat(axs, gts, gtl):
+        axs[0].imshow(gts[0])
+        axs[1].imshow(gtl[0])
+
+    @staticmethod
+    def plot_mean_heat(axs, gts, gtl):
+
+        axs[0].imshow(gts.mean(0))
+        axs[1].imshow(gtl.mean(0))
+
 def test_mini():
-    size=720
-    sigma_points=[11.6]
-    links=[(0,1)]
+    size = 720
+    sigma_points = [11.6]
+    links = [(0, 1)]
     g = GTGen(size, sigma_points, links)
     g.test_gen_gtl()
     g.test_gen_gts()
-    print('passed gts gtl')
+    print("passed gts gtl")
+
 
 def test_gen_gt():
     size = 64
-    keypoint = [[[.1],[.3]],[[.4],[.1]],[[.5],[.6]]]
+    keypoint = [[[0.1], [0.3]], [[0.4], [0.1]], [[0.5], [0.6]]]
     # 19 2 5
-    link = [(0,1)]
-    sigma_points = [11.6, 7.6, 4.6]
-    sigma_links = [11.6, 7.6, 4.6]
+    link = [(0, 1), [1, 2], [0, 2]]
+    # sigma_points = [11.6, 7.6, 5.6]
+    # sigma_links = [11.6, 7.6, 5.6]
 
-    gen = GTGen(size,  sigma_points, sigma_links, link)
+    sigma_points = [x/720 for x in [11.6, 70.6, 5.6]]
+    sigma_links = [x/720 for x in [11.6, 7.6, 50.6]]
+
+    kw = {
+        "is_use_old_mode": False,
+        "is_custom_mode": True,
+    }
+
+    gen = GTGen(size, sigma_points, sigma_links, link, n_keypoint=3, **kw)
     gt_list = gen(keypoint)
+    print("bef")
 
     n = len(gt_list)
-    fig, axs =  plt.subplots(n * 2)
-    for i, gt in enumerate(gt_list):
-        gts, gtl = gt
+    fig, axs = plt.subplots(n * 2)
+    for i, batch_gt in enumerate(gt_list):
+        last_stage = batch_gt[-1]
+        gts, gtl = last_stage
         print(gts.shape)
         print(gtl.shape)
-        print('--')
-        axs[i].imshow(gts[0])
-        axs[i+n].imshow(gtl[0])
+        print("--")
+        # GTGen.plot_first_heat(axs, gts, gtl)
+        GTGen.plot_mean_heat(axs, gts, gtl)
     plt.show()
+
+
 
 
 if __name__ == "__main__":

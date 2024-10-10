@@ -11,6 +11,7 @@ from utils.gen_gt import *
 from utils.cuda import *
 from torch.utils.data import DataLoader
 from data01 import MyDataset, Data
+from config import config
 
 try:
     import matplotlib.pyplot as plt
@@ -36,7 +37,7 @@ class PAF(nn.Module):
         super().__init__()
         if bi_mode:
             assert n_stage == 3
-        self.bi_mode=bi_mode
+        self.bi_mode = bi_mode
         self.sigma_points = sigma_points
         self.sigma_links = sigma_links
         self.links = links
@@ -48,8 +49,10 @@ class PAF(nn.Module):
         self.n_stage = n_stage
         assert n_link == len(links)
         assert n_stage > 0
-        assert len(sigma_points) == n_stage
-        assert len(sigma_links) == n_stage
+        self.is_custom_mode = kw.get("is_custom_mode", False)
+        if not self.is_custom_mode:
+            assert len(sigma_points) == n_stage
+            assert len(sigma_links) == n_stage
         self.backend = VGG19(no_weight=no_weight)
         backend_outp_feats = 128
         stages = [Stage(backend_outp_feats, n_point, n_paf, True)]
@@ -57,7 +60,7 @@ class PAF(nn.Module):
             stages.append(Stage(backend_outp_feats, n_point, n_paf, False))
         self.stages = nn.ModuleList(stages)
         self.gt_gen = self._init_gt_generator(
-            img_size, sigma_points, sigma_links, links
+            img_size, sigma_points, sigma_links, links, **kw
         )
         self.bce = None
         self.bi_thres = bi_thres
@@ -65,7 +68,7 @@ class PAF(nn.Module):
             assert bi_thres > 0
             self.bce = nn.BCEWithLogitsLoss()
             print()
-            print('message from model: bi_mode activated')
+            print("message from model: bi_mode activated")
 
     def __str__(self):
         txt = ["PAF model"]
@@ -92,6 +95,19 @@ class PAF(nn.Module):
     def to_binary(self, tensor, threshold):
         return (tensor >= threshold).float()
 
+    @staticmethod
+    def reshape_gt(n_batch, gt, i, device):
+        batch_gts = []
+        batch_gtl = []
+        for b in range(n_batch):
+            gts = gt[b][i][0]
+            gtl = gt[b][i][1]
+            batch_gts.append(gts)
+            batch_gtl.append(gtl)
+        batch_gts = torch.stack(batch_gts).to(device)
+        batch_gtl = torch.stack(batch_gtl).to(device)
+        return batch_gts, batch_gtl
+
     def cal_loss(self, pred, gt, device="cuda"):
         gt = self.gen_gt(gt)
         heatmap_outs, paf_outs = pred
@@ -109,15 +125,7 @@ class PAF(nn.Module):
             )
             pafs = F.interpolate(paf_outs[i], size=size, mode="bilinear").to(device)
             # t2 = time.time()
-            batch_gts = []
-            batch_gtl = []
-            for b in range(n_batch):
-                gts = gt[b][i][0]
-                gtl = gt[b][i][1]
-                batch_gts.append(gts)
-                batch_gtl.append(gtl)
-            batch_gts = torch.stack(batch_gts).to(device)
-            batch_gtl = torch.stack(batch_gtl).to(device)
+            batch_gts, batch_gtl = self.reshape_gt(n_batch, gt, i, device)
 
             # print(heatmaps.shape, 'heat')
             # print(pafs.shape, 'paf')
@@ -143,7 +151,6 @@ class PAF(nn.Module):
             #     x.save('temptemp.jpg')
             #     break
 
-                
             # print('p stage',i, heatmaps.shape, batch_gts.shape)
             # print('l stage',i, pafs.shape, batch_gtl.shape)
             # t4 = time.time()
@@ -153,10 +160,11 @@ class PAF(nn.Module):
         sum_loss = loss_point + loss_link
         return sum_loss
 
-    def _init_gt_generator(self, img_size, sigma_points, sigma_links, links):
-        assert len(sigma_points) == self.n_stage
+    def _init_gt_generator(self, img_size, sigma_points, sigma_links, links, **kw):
+        if not self.is_custom_mode:
+            assert len(sigma_points) == self.n_stage
         assert len(links) == self.n_link
-        gt_gen = GTGen(img_size, sigma_points, sigma_links, links)
+        gt_gen = GTGen(img_size, sigma_points, sigma_links, links, **kw)
         return gt_gen
 
     def gen_gt(self, keypoint):
@@ -167,34 +175,38 @@ class PAF(nn.Module):
         keypoint_batch = self.get_keypoints(output)
         pred_batch = [func(k) for k in keypoint_batch]
         return pred_batch
-    
+
     @staticmethod
     def gt_batch_to_list(gt_keypoints):
-        result = [[] for _ in range(len(gt_keypoints[0][0]))]  # Initialize list of 5 elements (for 5 batches)
-        
+        result = [
+            [] for _ in range(len(gt_keypoints[0][0]))
+        ]  # Initialize list of 5 elements (for 5 batches)
+
         for keypoints in gt_keypoints:  # Iterate over the 19 keypoints
             x_positions, y_positions = keypoints  # Unpack the x and y positions
-            
+
             for i in range(len(x_positions)):  # For each batch (5 in this case)
                 x = x_positions[i].item()  # Get the x value for the batch
                 y = y_positions[i].item()  # Get the y value for the batch
-                result[i].append((y, x))  # Append the (x, y) tuple for the current keypoint
-                
+                result[i].append(
+                    (y, x)
+                )  # Append the (x, y) tuple for the current keypoint
+
         return result
-    
+
     @staticmethod
     def get_keypoint_from_a_heatmap(heatmap, original_size):
-        '''
+        """
         |0|1|2|
-        0 -> 0.5/3 = 0+0.5/3 
+        0 -> 0.5/3 = 0+0.5/3
         1 -> 1.5/3 = 1+0.5/3
         2 -> 2.5/3 = 2+0.5/3
-        '''
-        keypoint = (heatmap==torch.max(heatmap)).nonzero()[0]
+        """
+        keypoint = (heatmap == torch.max(heatmap)).nonzero()[0]
         keypoint = torch.div(keypoint + 0.5, original_size)
         return keypoint.tolist()
 
-    def get_keypoint_batch_by_scale_up(self, output, device='cuda'):
+    def get_keypoint_batch_by_scale_up(self, output, device="cuda"):
         heatmap_outs, paf_outs = output
         # scale up each out from 90 to 720
         original_size = (self.img_size, self.img_size)
@@ -202,14 +214,17 @@ class PAF(nn.Module):
         last_heatmaps = heatmap_outs[-1]
         n_batch = len(last_heatmaps)
         # scale to 720 (original size)
-        heatmaps_original_size = F.interpolate(last_heatmaps, size=original_size, mode="bilinear").to(
-            device
-        )
+        heatmaps_original_size = F.interpolate(
+            last_heatmaps, size=original_size, mode="bilinear"
+        ).to(device)
 
         keypoint_batch = []
         for batch in range(n_batch):
             heatmaps = heatmaps_original_size[batch]
-            keypoints = [PAF.get_keypoint_from_a_heatmap(heatmap, original_size[0]) for heatmap in heatmaps]
+            keypoints = [
+                PAF.get_keypoint_from_a_heatmap(heatmap, original_size[0])
+                for heatmap in heatmaps
+            ]
             keypoint_batch.append(keypoints)
         return keypoint_batch
 
@@ -362,9 +377,6 @@ def test_loss(device="cuda"):
 
 
 def test_with_loader(device="cuda"):
-    from data01 import MyDataset
-    from torch.utils.data import DataLoader
-
     img_size = 720
     img_size = 64
     model = Model(
@@ -480,6 +492,7 @@ class Model(PAF):
 
 # torch.Size([5, 19, 90, 90]) -> keypoint -> tfs
 
+
 def test_bi_model(device):
     k = [(0.2, 0.3) for i in range(19)]
     keypoints = [k, k]
@@ -493,7 +506,8 @@ def test_bi_model(device):
     model = Model(sigma_points, sigma_links, links, bi_mode=True).to(device)
     assert model.fake_stages == [True, True, False]
     print()
-    print('passed model bi_mode')
+    print("passed model bi_mode")
+
 
 def test_bi_mode_feed(device):
     from data01 import MyDataset
@@ -552,10 +566,54 @@ def test_bi_mode_feed(device):
             break
     print(sum(t), "sum time", device)
     print(m)
-    print('loss', loss)
+    print("loss", loss)
+
+
+def test_custom_mode_with_loader(device="cuda"):
+    img_size = 720
+    # img_size = 64
+
+    training = config()["m3"]
+
+    kw = {
+        "is_custom_mode": True,
+    }
+    model = Model(
+        training["sigma_points"],
+        training["sigma_links"],
+        MyDataset.get_link(),
+        img_size=img_size,
+        **kw,
+    ).to(device)
+    dataset = MyDataset("va", img_size, test_mode=True)
+    dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+
+    n = 1
+    fig, axs = plt.subplots(n * 2)
+    for i, dat in enumerate(dataloader):
+        img = dat["inp"].to(device)
+        keypoint = dat["keypoint"]
+        print(img.shape, "inp shape from loader")
+
+        pred = model(img)
+        print(pred[0][-1].shape)
+        loss = model.cal_loss(pred, keypoint, device)
+        print(loss)
+
+        gt = model.gen_gt(keypoint)
+        batch, stage = 0, -1
+        gts, gtl = gt[batch][stage][0], gt[batch][stage][1]
+        batch_gts, batch_gtl = Model.reshape_gt(2, gt, stage, device)
+        # print(batch_gts.shape, batch_gtl.shape)
+
+        GTGen.plot_mean_heat(axs, batch_gts[0], batch_gtl[0])
+        plt.show()
+        break
+
 
 if __name__ == "__main__":
-    device = 'cuda'
+    device = "cpu"
+    test_custom_mode_with_loader(device)
     # test_bi_model('cuda')
     # test_bi_mode_feed(device)
     # test_forword("cpu")
