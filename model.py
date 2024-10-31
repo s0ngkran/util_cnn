@@ -50,6 +50,7 @@ class PAF(nn.Module):
         assert n_link == len(links)
         assert n_stage > 0
         self.is_custom_mode = kw.get("is_custom_mode", False)
+        print(kw,'---')
         if not self.is_custom_mode:
             assert len(sigma_points) == n_stage
             assert len(sigma_links) == n_stage
@@ -286,7 +287,6 @@ def test_forword(device="cuda"):
             print("out shape", len(out))
             for o in out:
                 print(o.shape)
-
 
 def plot_img_keypoint(img, keypoint):
     print(keypoint)
@@ -606,17 +606,18 @@ def test_custom_mode_with_loader(device="cuda"):
         batch_gts, batch_gtl = Model.reshape_gt(2, gt, stage, device)
         # print(batch_gts.shape, batch_gtl.shape)
 
-        GTGen.plot_mean_heat(axs, batch_gts[0], batch_gtl[0])
-        plt.show()
+        GTGen.plot_mean_heat(axs, batch_gts[0].to('cpu'), batch_gtl[0].to('cpu'))
+        # plt.show()
+        plt.savefig(f"{i}.png")
         break
 
 
 if __name__ == "__main__":
-    device = "cpu"
-    test_custom_mode_with_loader(device)
+    device = "cuda"
+    # test_custom_mode_with_loader(device)
     # test_bi_model('cuda')
     # test_bi_mode_feed(device)
-    # test_forword("cpu")
+    test_forword("cuda")
     # test_loss('cuda')
     # test_with_loader(device)
     # for dataset in ['te', 'va', 'tr']:
