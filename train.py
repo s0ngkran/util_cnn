@@ -36,8 +36,11 @@ parser.add_argument("-d", "--device")
 parser.add_argument("-nlr", "--new_learning_rate", type=int)
 parser.add_argument("-lr", "--learning_rate", type=int)
 parser.add_argument("-s", "--stopper_min_ep", type=int)
+parser.add_argument("-fs", "--force_stop_ep", type=int)
 parser.add_argument("-se", "--save_every", type=int)
+parser.add_argument("-va", "--va_every", type=int)
 parser.add_argument("-pi", "--pilot", action="store_true")
+parser.add_argument("-cus", "--is_custom_mode", action="store_true")
 parser.add_argument("-pi2", "--pilot2", type=int)
 parser.add_argument("-w", "--continue_weight")
 args = parser.parse_args()
@@ -60,6 +63,9 @@ if args.pilot:
             "sigma_links_2": SIGMA_LINKS_2,
         }
     )
+
+if args.is_custom_mode:
+    assert args.config.startswith('m')
 
 pilot2_num = 0 if args.pilot2 is None else int(args.pilot2)
 # assert pilot2_num > 0  # you can delete this line; message from sk
@@ -88,13 +94,15 @@ model_kwargs = {
     'img_size': img_size,
     'bi_mode': bi_mode,
     'bi_thres': bi_thres,
+    'is_custom_mode': args.is_custom_mode
 }
+# print('sssss', args.is_custom_mode)
 data_kwargs = {}
 ############################ config ###################
 TRAINING_JSON = "tr"
 VALIDATION_JSON = "va"
-BATCH_SIZE = 5 if args.batch_size is None else args.batch_size
-LEARNING_RATE = 1e-3 if args.learning_rate is None else 10**args.learning_rate
+BATCH_SIZE = 10 if args.batch_size is None else args.batch_size
+LEARNING_RATE = 1e-4 if args.learning_rate is None else 10**args.learning_rate
 TRAINING_NAME = args.name
 N_WORKERS = 10 if args.n_worker is None else args.n_worker
 SAVE_FOLDER = "save/"
@@ -107,7 +115,9 @@ NEW_LEARNING_RATE = (
     None if args.new_learning_rate is None else 10**args.new_learning_rate
 )
 MIN_STOP = 20 if args.stopper_min_ep is None else args.stopper_min_ep
-SAVE_EVERY = 1000 if args.save_every is None else args.save_every
+FORCE_STOP = 3000 if args.force_stop_ep is None else args.force_stop_ep
+SAVE_EVERY = 100 if args.save_every is None else args.save_every
+VA_EVERY = 10 if args.va_every is None else args.va_every
 print("training name:", TRAINING_NAME)
 
 
@@ -149,7 +159,7 @@ assert len(training_set) >= BATCH_SIZE, f"batch={BATCH_SIZE}; please reduce batc
 
 links = MyDataset.get_link()
 model = Model(sigma_points, sigma_links, links, **model_kwargs).to(DEVICE)
-stopper = Stopper(min_epoch=MIN_STOP)
+stopper = Stopper(min_epoch=MIN_STOP, force_stop=FORCE_STOP)
 optimizer = torch.optim.Adam(model.parameters())
 epoch = 0
 lowest_va_loss = 9999999999
@@ -221,6 +231,7 @@ setting.append(f"CONTINUE_EP={continue_ep}")
 setting.append(f"LOG_DIR={log.dir}")
 setting.append(f"MIN_STOP={MIN_STOP}")
 setting.append(f"SAVE_EVERY={SAVE_EVERY}")
+setting.append(f"VA_EVERY={VA_EVERY}")
 setting = "\n".join(setting)
 print()
 print(setting)
@@ -369,18 +380,24 @@ def main():
             )
 
         tr_loss = train(profile)
-        va_loss = validation(tr_loss, profile)
+        va_loss = None
+        if epoch % VA_EVERY == 0:
+            va_loss = validation(tr_loss, profile)
+
         if args.pilot2 and epoch in [550 + i * 50 for i in range(20)]:
             save_model(f"{epoch:.0f}")
             print("save every activated at ep=", epoch)
+        # additional save
         if epoch % SAVE_EVERY == 0:
+            if va_loss is None:
+                va_loss = validation(tr_loss, profile)
             save_model(f"{epoch:.0f}")
             print("save every activated at ep=", epoch)
         if CHECKING:
             break
         if profile:
             break
-        if stopper(va_loss):
+        if va_loss is not None and stopper(va_loss):
             print("breaked by stopper at ep", epoch)
             break
     print("done")

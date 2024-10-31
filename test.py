@@ -25,12 +25,17 @@ if __name__ == '__main__':
     parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
     parser.add_argument('-d', '--device') 
     parser.add_argument('--weight') 
+    parser.add_argument('-cus', '--is_custom_mode', action="store_true") 
     parser.add_argument('--pred_keypoints', action="store_true") 
     args = parser.parse_args()
     assert args.device in [None, 'cpu', 'cuda']
     print(args)
+
+    if args.is_custom_mode:
+        assert args.name.startswith('m')
     img_size = int(args.img_size)
     model_kwargs = {
+        'is_custom_mode': args.is_custom_mode
     }
     data_kwargs = {
     }
