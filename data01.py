@@ -238,7 +238,7 @@ class MyDataset(Dataset):
             mn, mx = tensor.min(), tensor.max()
             print("bef -> mn, mx =", mn, mx)
 
-        if self.no_aug or self.dataset == "te":
+        if self.no_aug or self.dataset == "te" or self.dataset == 'va':
             key = image_path + 't'
             image_tensor = self.load_cache(key, lambda: self.do_totensor(image_pil))
         else:
