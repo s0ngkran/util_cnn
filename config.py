@@ -255,13 +255,16 @@ def config():
         "m1": {
             "sigma_points": CUSTOM_SIGMA_POINTS,
             "sigma_links": CUSTOM_SIGMA_LINKS,
+            "img_size": 360,
         },
         "m2": {
             "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
             "sigma_links": CUSTOM_SIGMA_LINKS,
+            "img_size": 360,
         },
         "m3": {
             "sigma_points": [x * 3 for x in CUSTOM_SIGMA_POINTS],
             "sigma_links": CUSTOM_SIGMA_LINKS,
+            "img_size": 360,
         },
     }
