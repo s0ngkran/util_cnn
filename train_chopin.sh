@@ -81,16 +81,18 @@ tr_te_bi(){
 
     BATCH=10
     wait_gpu 9;
-    tr ${config} ${name} "-b ${BATCH} -lr -4 -s 700 -se 100 -col";
+    tr ${config} ${name} "-b ${BATCH} -lr -4 -s 700 -se 100";
     echo "done $config ${name}";
-    sleep 100;
-    te ${config}_${name} "360 -d cuda -b ${BATCH}";
-    echo "^auto run test()" >> acc;
+    # sleep 100;
+    # te ${config}_${name} "360 -d cuda -b ${BATCH}";
+    # echo "^auto run test()" >> acc;
 }
 
 # tr_te_bi bi10 IC_0&
 # tr_te_bi bi90 IC_0&
 # tr_te_bi bi50 IC_0&
+# tr_te_bi bi10 IC_1&
+# tr_te_bi bi10 IC_2&
 # wait
 # echo "done all 10 90 50";
 
@@ -101,42 +103,96 @@ tr_te_bi(){
 # done
 
 
+# config=4y
+# name=FC_0
+# BATCH=10
+# tr ${config} ${name} "-b ${BATCH} -lr -4 -s 700 -se 100";
 
 
 
-for ep in {300..800..100}
-do
-    config=bi50
-    name=IC_0
-    fname="${config}_${name}.$ep"
-    python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
-done
+# for ep in {900..1300..100}
+# do
+#     config=bi50
+#     name=IC_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
 
-for ep in {300..800..100}
-do
-    config=bi90
-    name=IC_0
-    fname="${config}_${name}.$ep"
-    python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
-done
+# for ep in {900..1300..100}
+# do
+#     config=bi90
+#     name=IC_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
 
-for ep in {300..800..100}
-do
-    config=bi10
-    name=IC_0
-    fname="${config}_${name}.$ep"
-    python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
-done
+# for ep in {900..1300..100}
+# do
+#     config=bi10
+#     name=IC_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+# for ep in {100..700..100}
+# do
+#     config=bi10
+#     name=IC_1
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+# for ep in {100..400..100}
+# do
+#     config=bi10
+#     name=IC_2
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
 
-# bi10_IC_0.300
-# bi10_IC_0.400
-# bi10_IC_0.best
-# bi10_IC_0.last
-# bi50_IC_0.300
-# bi50_IC_0.400
-# bi50_IC_0.best
-# bi50_IC_0.last
-# bi90_IC_0.300
-# bi90_IC_0.400
-# bi90_IC_0.best
-# bi90_IC_0.last
+
+# for ep in {100..500..100}
+# do
+#     config=10x1x_550
+#     name=GClr4b10_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
+# done
+
+
+# s360_BMlr1_4.best
+# for fname in s720_BClr1b10_0.best s720_BClr1b10_1.best s720_BClr1b10_2.best s720_BClr1b10_3.best s720_BClr1b10_4.best
+# do
+#     python test.py $fname 720 -d cuda -b 2 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for fname in 4y_FC_0.100 4y_FC_0.1000 4y_FC_0.1100 4y_FC_0.200 4y_FC_0.300 4y_FC_0.400 4y_FC_0.500 4y_FC_0.600 4y_FC_0.700 4y_FC_0.800 4y_FC_0.900 4y_FC_0.best bi10_IC_1.100 bi10_IC_1.200 bi10_IC_1.300 bi10_IC_1.400 bi10_IC_1.500 bi10_IC_1.600 bi10_IC_1.700 bi10_IC_1.800 bi10_IC_1.900 bi10_IC_1.best bi10_IC_2.100 bi10_IC_2.1000 bi10_IC_2.1100 bi10_IC_2.1200 bi10_IC_2.1300 bi10_IC_2.1400 bi10_IC_2.1500 bi10_IC_2.200 bi10_IC_2.300 bi10_IC_2.400 bi10_IC_2.500 bi10_IC_2.600 bi10_IC_2.700 bi10_IC_2.800 bi10_IC_2.900 bi10_IC_2.best
+# do
+#     echo $fname;
+#     python test.py $fname 360 -d cuda -b 20 --pred_keypoints --weight save/$fname;
+# done
+
+
+config="m1"
+name="JC_0"
+# wait_gpu 25;
+# tr ${config} ${name} "-cus -fs 1500"&
+
+
+# tr m1 JC_0 "-col -cus -b 10 -lr -4 -fs 1500 -se 100"&
+# tr m2 JC_0 "-col -cus -b 10 -lr -4 -fs 1500 -se 100"&
+# tr m3 JC_0 "-col -cus -b 10 -lr -4 -fs 1500 -se 100"&
+
+test_m(){
+    config=$1
+    name=$2
+    ep=$3
+    fname="${config}_$name.$ep"
+    python test.py $fname 360 -d cuda -b 20 --pred_keypoints -cus --weight save/$fname;
+
+    # how to use
+    # test_m m1 JC_0 best
+}
+
+# test_m m1 JC_0 best;
+test_m m2 JC_0 best;
+test_m m3 JC_0 best;
