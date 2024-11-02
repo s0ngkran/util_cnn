@@ -267,4 +267,15 @@ def config():
             "sigma_links": CUSTOM_SIGMA_LINKS,
             "img_size": 360,
         },
+        # n is for no sigma link
+        "n1": {
+            # "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
+            "sigma_points": [ref2, ref2, ref2],
+            "img_size": 360,
+        },
+        # o is for no sigma link with custom sigma ponts
+        "o1": {
+            "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
+            "img_size": 360,
+        },
     }
