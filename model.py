@@ -54,11 +54,13 @@ class PAF(nn.Module):
         self.is_no_links_custom_mode = kw.get('is_no_links_custom_mode', False)
         print(kw,'---')
         if self.is_no_links_mode: # config startswith n
+            self.n_paf = 0
             assert n_stage == 3
             assert len(sigma_points) == n_stage
             assert self.sigma_links is None
 
         elif self.is_no_links_custom_mode: # config startswith o
+            self.n_paf = 0
             assert self.sigma_links is None
 
         elif not self.is_custom_mode:
@@ -67,9 +69,9 @@ class PAF(nn.Module):
 
         self.backend = VGG19(no_weight=no_weight)
         backend_outp_feats = 128
-        stages = [Stage(backend_outp_feats, n_point, n_paf, True)]
+        stages = [Stage(backend_outp_feats, n_point, self.n_paf, True)]
         for i in range(n_stage - 1):
-            stages.append(Stage(backend_outp_feats, n_point, n_paf, False))
+            stages.append(Stage(backend_outp_feats, n_point, self.n_paf, False))
         self.stages = nn.ModuleList(stages)
         self.gt_gen = self._init_gt_generator(
             img_size, sigma_points, sigma_links, links, **kw
