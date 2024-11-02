@@ -1,5 +1,5 @@
 CUSTOM_SIGMA_LINKS = [
-    x / 720
+    x 
     for x in [
         #
         20,
@@ -24,7 +24,7 @@ CUSTOM_SIGMA_LINKS = [
 ]
 
 CUSTOM_SIGMA_POINTS = [
-    x / 720
+    x
     for x in [
         11.6,
         15,
