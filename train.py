@@ -46,6 +46,9 @@ parser.add_argument("-w", "--continue_weight")
 args = parser.parse_args()
 print(args)
 
+# args.config = 'n1'
+# args.device = 'cpu'
+
 training = config()[args.config]
 CHANGE_SIGMA_AT_EP = None
 if args.pilot:
@@ -90,12 +93,17 @@ assert args.device in [None, "cpu", "cuda"]
 
 bi_mode = 'bi_thres' in training 
 bi_thres = training.get('bi_thres')
+is_no_links_mode = args.config.startswith('n')
+is_no_links_custom_mode = args.config.startswith('o')
 model_kwargs = {
     'img_size': img_size,
     'bi_mode': bi_mode,
     'bi_thres': bi_thres,
-    'is_custom_mode': args.is_custom_mode
+    'is_custom_mode': args.is_custom_mode,
+    'is_no_links_mode': is_no_links_mode,
+    'is_no_links_custom_mode': is_no_links_custom_mode,
 }
+
 # print('sssss', args.is_custom_mode)
 data_kwargs = {}
 ############################ config ###################
@@ -410,3 +418,4 @@ def write_loss(epoch, tr, va):
 if __name__ == "__main__":
     main()
     # python train.py name -ck
+# main()
