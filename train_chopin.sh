@@ -193,6 +193,36 @@ test_m(){
     # test_m m1 JC_0 best
 }
 
+test_m_fname(){
+    fname=$1
+    echo "testing... $fname"
+    python test.py $fname 360 -d cuda -b 30 --pred_keypoints -cus --weight save/$fname;
+}
+
 # test_m m1 JC_0 best;
-test_m m2 JC_0 best;
-test_m m3 JC_0 best;
+# test_m m2 JC_0 best;
+# test_m m3 JC_0 best;
+a(){
+    for fname in m1_JC_0.1000 m1_JC_0.1100 m1_JC_0.1200 m1_JC_0.1300 m1_JC_0.1400 m1_JC_0.1500 m1_JC_0.1600 m1_JC_0.1700 m1_JC_0.1800 m1_JC_0.200 m1_JC_0.300 m1_JC_0.400 m1_JC_0.500 m1_JC_0.600 m1_JC_0.700 m1_JC_0.800 m1_JC_0.900 m1_JC_0.best
+    do
+        test_m_fname "$fname"
+    done
+}
+b(){
+    for fname in  m2_JC_0.100 m2_JC_0.1000 m2_JC_0.1100 m2_JC_0.200 m2_JC_0.300 m2_JC_0.400 m2_JC_0.500 m2_JC_0.600 m2_JC_0.700 m2_JC_0.800 m2_JC_0.900 m2_JC_0.best
+    do
+        test_m_fname "$fname"
+    done
+}
+c(){
+    for fname in m3_JC_0.100 m3_JC_0.1000 m3_JC_0.1100 m3_JC_0.1200 m3_JC_0.1300 m3_JC_0.200 m3_JC_0.300 m3_JC_0.400 m3_JC_0.500 m3_JC_0.600 m3_JC_0.700 m3_JC_0.800 m3_JC_0.900 m3_JC_0.best
+    do
+        test_m_fname "$fname"
+    done
+}
+
+a&
+b& 
+c&
+wait
+echo done
