@@ -58,11 +58,9 @@ class PAF(nn.Module):
             assert n_stage == 3
             assert len(sigma_points) == n_stage
             assert self.sigma_links is None
-
         elif self.is_no_links_custom_mode: # config startswith o
             self.n_paf = 0
             assert self.sigma_links is None
-
         elif not self.is_custom_mode:
             assert len(sigma_points) == n_stage
             assert len(sigma_links) == n_stage
@@ -102,8 +100,11 @@ class PAF(nn.Module):
         for i, stage in enumerate(self.stages):
             heatmap_out, paf_out = stage(cur_feats)
             heatmap_outs.append(heatmap_out)
-            paf_outs.append(paf_out)
-            cur_feats = torch.cat([img_feats, heatmap_out, paf_out], 1)
+            if paf_out is not None:
+                paf_outs.append(paf_out)
+                cur_feats = torch.cat([img_feats, heatmap_out, paf_out], 1)
+            else:
+                cur_feats = torch.cat([img_feats, heatmap_out], 1)
         return heatmap_outs, paf_outs
 
     def to_binary(self, tensor, threshold):
@@ -113,6 +114,12 @@ class PAF(nn.Module):
     def reshape_gt(n_batch, gt, i, device):
         batch_gts = []
         batch_gtl = []
+        # gts = gt[0][i][0]
+        # mx = torch.max(a)
+        # mn = torch.min(a)
+        # print(f'{gts.shape=}') # 19, 360, 360
+        # print(torch.max(gts))
+        # 1/0
         for b in range(n_batch):
             gts = gt[b][i][0]
             gtl = gt[b][i][1]
@@ -131,15 +138,18 @@ class PAF(nn.Module):
         n_stage = len(heatmap_outs)
         n_batch = len(heatmap_outs[0])
         size = (self.img_size, self.img_size)
+        pafs = None
         for i in range(n_stage):
             # scale to 720 (original size)
             # t1 = time.time()
             heatmaps = F.interpolate(heatmap_outs[i], size=size, mode="bilinear").to(
                 device
             )
-            pafs = F.interpolate(paf_outs[i], size=size, mode="bilinear").to(device)
+            if len(paf_outs) > 0:
+                pafs = F.interpolate(paf_outs[i], size=size, mode="bilinear").to(device)
             # t2 = time.time()
             batch_gts, batch_gtl = self.reshape_gt(n_batch, gt, i, device)
+            # print(batch_gts.shape, 'batch gts shape')
 
             # print(heatmaps.shape, 'heat')
             # print(pafs.shape, 'paf')
@@ -155,15 +165,19 @@ class PAF(nn.Module):
             else:
                 loss_point += F.mse_loss(heatmaps, batch_gts)
 
-            loss_link += 0 if batch_gtl is None else F.mse_loss(pafs, batch_gtl)
+            if pafs is not None:
+                loss_link += F.mse_loss(pafs, batch_gtl)
             # save img of each batch_gts
 
+            # for gts in heatmaps:
             # for gts in batch_gts:
-            #     gts = gts[0]
-            #     print('gts', gts.shape)
+            #     # gts = gts[1]
+            #     gts = torch.mean(gts, dim=0)
+            #     gts *= 5
+            #     print('gts', gts)
             #     x = to_pil_image(gts)
             #     x.save('temptemp.jpg')
-            #     break
+            #     1/0
 
             # print('p stage',i, heatmaps.shape, batch_gts.shape)
             # print('l stage',i, pafs.shape, batch_gtl.shape)
@@ -171,7 +185,10 @@ class PAF(nn.Module):
         # print(t2-t1, 'interpolate')
         # print(t3-t2, 'prepare gt')
         # print(t4-t3, 'cal loss')
-        sum_loss = loss_point + loss_link
+        if pafs is not None:
+            sum_loss = loss_point + loss_link
+        else:
+            sum_loss = loss_point
         return sum_loss
 
     def _init_gt_generator(self, img_size, sigma_points, sigma_links, links, **kw):
