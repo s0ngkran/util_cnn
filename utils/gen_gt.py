@@ -15,6 +15,7 @@ class GTGen:
         self.sigma_links = sigma_links
         self.is_custom_mode = kw.get("is_custom_mode", False)
         self.is_use_old_mode = kw.get("is_use_old_mode", False)
+        self.is_no_links_custom_mode = kw.get('is_no_links_custom_mode', False)
 
         if not self.is_custom_mode and not self.is_use_old_mode:
             self.is_use_old_mode = True
@@ -24,13 +25,16 @@ class GTGen:
         # print('-----')
 
         if not self.is_use_old_mode:
-            for x in sigma_links:
-                assert 0 <= x <= 1, f"sigma link should in range [0, 1] {x}"
+            if not self.is_no_links_custom_mode:
+                for x in sigma_links:
+                    assert 0 <= x <= 1, f"sigma link should in range [0, 1] {x}"
             for x in sigma_points:
                 assert 0 <= x <= 1, f"sigma point should in range [0, 1] {x}"
 
         if self.is_custom_mode:
-            assert len(sigma_links) == len(links), f"{len(sigma_links)} {len(links)}"
+            if not self.is_no_links_custom_mode:
+                assert len(sigma_links) == len(links), f"{len(sigma_links)} {len(links)}"
+
             assert len(sigma_points) == self.n_keypoint, f"{len(sigma_points)=} {n_keypoint=}"
 
         gaussian_size = img_size * 2
@@ -98,6 +102,11 @@ class GTGen:
         y_list = [k[1] * size for k in keypoint]
         xy = x_list, y_list
         gt_list = []
+        self.sigma_links = self.sigma_links if self.sigma_links is not None else [None for i in self.sigma_points]
+        # print(keypoint)
+        # print('sp', self.sigma_points)
+        # print('sl', self.sigma_links)
+        # 1/0
         for sp, sl in zip(self.sigma_points, self.sigma_links):
             gt = self._gen_one_size(sp, xy, sl)
             # shape (n_kp, 720, 720)
@@ -111,7 +120,7 @@ class GTGen:
     def _gen_one_size(self, sigma_point, xy, sigma_link):
         x_list, y_list = xy
         gts = self._gen_gts(x_list, y_list, sigma_point)
-        gtl = self._gen_gtl(x_list, y_list, sigma_link)
+        gtl = None if sigma_link is None else self._gen_gtl(x_list, y_list, sigma_link)
         return (gts, gtl)
 
     def _gen_gaussian_map(self, width, height, sigma):
