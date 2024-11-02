@@ -264,6 +264,8 @@ def train(profile=False):
         optimizer.step()
         if iteration == last_iter and profile:
             t2 = time.time()
+        if CHECKING:
+            print(f'{iteration=} {loss.item()=}')
     loss = avg(losses)
     if profile:
         print("n_iter=", n)

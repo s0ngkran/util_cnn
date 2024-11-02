@@ -98,6 +98,7 @@ class GTGen:
         y_list = [k[1] * size for k in keypoint]
         xy = x_list, y_list
         gt_list = []
+        self.sigma_links = self.sigma_links if self.sigma_links is not None else [None for i in self.sigma_points]
         for sp, sl in zip(self.sigma_points, self.sigma_links):
             gt = self._gen_one_size(sp, xy, sl)
             # shape (n_kp, 720, 720)
@@ -111,7 +112,7 @@ class GTGen:
     def _gen_one_size(self, sigma_point, xy, sigma_link):
         x_list, y_list = xy
         gts = self._gen_gts(x_list, y_list, sigma_point)
-        gtl = self._gen_gtl(x_list, y_list, sigma_link)
+        gtl = None if sigma_link is None else self._gen_gtl(x_list, y_list, sigma_link)
         return (gts, gtl)
 
     def _gen_gaussian_map(self, width, height, sigma):

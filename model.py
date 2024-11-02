@@ -117,7 +117,7 @@ class PAF(nn.Module):
             batch_gts.append(gts)
             batch_gtl.append(gtl)
         batch_gts = torch.stack(batch_gts).to(device)
-        batch_gtl = torch.stack(batch_gtl).to(device)
+        batch_gtl = None if batch_gtl[0] is None else torch.stack(batch_gtl).to(device)
         return batch_gts, batch_gtl
 
     def cal_loss(self, pred, gt, device="cuda"):
@@ -153,7 +153,7 @@ class PAF(nn.Module):
             else:
                 loss_point += F.mse_loss(heatmaps, batch_gts)
 
-            loss_link += F.mse_loss(pafs, batch_gtl)
+            loss_link += 0 if batch_gtl is None else F.mse_loss(pafs, batch_gtl)
             # save img of each batch_gts
 
             # for gts in batch_gts:
