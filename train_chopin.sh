@@ -198,6 +198,11 @@ test_m_fname(){
     echo "testing... $fname"
     python test.py $fname 360 -d cuda -b 30 --pred_keypoints -cus --weight save/$fname;
 }
+test_no_cus(){
+    fname=$1
+    echo "testing... $fname"
+    python test.py $fname 360 -d cuda -b 30 --pred_keypoints --weight save/$fname;
+}
 
 # test_m m1 JC_0 best;
 # test_m m2 JC_0 best;
@@ -208,21 +213,21 @@ a(){
         test_m_fname "$fname"
     done
 }
-b(){
-    for fname in  m2_JC_0.100 m2_JC_0.1000 m2_JC_0.1100 m2_JC_0.200 m2_JC_0.300 m2_JC_0.400 m2_JC_0.500 m2_JC_0.600 m2_JC_0.700 m2_JC_0.800 m2_JC_0.900 m2_JC_0.best
-    do
-        test_m_fname "$fname"
-    done
-}
-c(){
-    for fname in m3_JC_0.100 m3_JC_0.1000 m3_JC_0.1100 m3_JC_0.1200 m3_JC_0.1300 m3_JC_0.200 m3_JC_0.300 m3_JC_0.400 m3_JC_0.500 m3_JC_0.600 m3_JC_0.700 m3_JC_0.800 m3_JC_0.900 m3_JC_0.best
-    do
-        test_m_fname "$fname"
-    done
-}
 
-a&
-b& 
-c&
-wait
-echo done
+
+# tr m2 KC_0 "-cus -b 20 -lr -4 -fs 1500 -se 100"&
+# tr n1 LC_0 "-b 20 -lr -4 -fs 1500 -se 100"&
+# tr n1 LC_1 "-b 20 -lr -4 -fs 1500 -se 100";
+# tr n1 LC_2 "-b 20 -lr -4 -fs 1500 -se 100";
+# tr n1 LC_3 "-b 20 -lr -4 -fs 1500 -se 100";
+tr m2 KCC_0 "-cus -b 20 -lr -4 -fs 1500 -se 100";
+
+# test_m_fname m2_KC_0.best
+# test_no_cus n1_LC_0.best
+ 
+# for fname in n1_LC_0.100 n1_LC_0.1000 n1_LC_0.1100 n1_LC_0.1200 n1_LC_0.1300 n1_LC_0.1400 n1_LC_0.1500 n1_LC_0.1600 n1_LC_0.200 n1_LC_0.300 n1_LC_0.400 n1_LC_0.500 n1_LC_0.600 n1_LC_0.700 n1_LC_0.800 n1_LC_0.900
+# do
+#     echo $fname
+#     test_no_cus "$fname"
+# done
+
