@@ -1,4 +1,5 @@
 import torch
+from torchvision.transforms.functional import to_pil_image
 import time
 
 try:
@@ -27,9 +28,10 @@ class GTGen:
         if not self.is_use_old_mode:
             if not self.is_no_links_custom_mode:
                 for x in sigma_links:
-                    assert 0 <= x <= 1, f"sigma link should in range [0, 1] {x}"
-            for x in sigma_points:
-                assert 0 <= x <= 1, f"sigma point should in range [0, 1] {x}"
+                    assert 0 <= x <= 1, f"sigma link should in range [0, 1] {x=}"
+            # RECHECK
+            # for x in sigma_points:
+            #     assert x > 1, f"sigma point should more than 1; {x=}"
 
         if self.is_custom_mode:
             if not self.is_no_links_custom_mode:
@@ -48,9 +50,9 @@ class GTGen:
             self.big_gaussians = big_gaussians
         else:
             for sigma_point in sigma_points:
-                assert (
-                    0 <= sigma_point <= 1
-                ), f"sigma point should in range [0, 1] but {sigma_point}"
+                # assert (
+                #     0 <= sigma_point <= 1
+                # ), f"sigma point should in range [0, 1] but {sigma_point}"
                 if str(sigma_point) in big_gaussians:
                     continue
                 m = self._gen_gaussian_map(

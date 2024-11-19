@@ -34,8 +34,13 @@ if __name__ == '__main__':
     if args.is_custom_mode:
         assert args.name.startswith('m')
     img_size = int(args.img_size)
+
+    is_no_links_mode = args.name.startswith('n')
+    is_no_links_custom_mode = args.name.startswith('o')
     model_kwargs = {
-        'is_custom_mode': args.is_custom_mode
+        'is_custom_mode': args.is_custom_mode,
+        'is_no_links_mode': is_no_links_mode,
+        'is_no_links_custom_mode': is_no_links_custom_mode,
     }
     data_kwargs = {
     }

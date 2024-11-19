@@ -1,5 +1,6 @@
+# checked!!! divided 720 is correct 
 CUSTOM_SIGMA_LINKS = [
-    x 
+    x /720 
     for x in [
         #
         20,
@@ -23,8 +24,9 @@ CUSTOM_SIGMA_LINKS = [
     ]
 ]
 
+# checked!!! divided 720 is correct config
 CUSTOM_SIGMA_POINTS = [
-    x
+    x / 720
     for x in [
         11.6,
         15,
@@ -273,7 +275,7 @@ def config():
             "sigma_points": [ref2, ref2, ref2],
             "img_size": 360,
         },
-        # o is for no sigma link with custom sigma ponts
+        # o is for no sigma link with custom sigma point
         "o1": {
             "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
             "img_size": 360,

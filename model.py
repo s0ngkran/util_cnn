@@ -52,18 +52,20 @@ class PAF(nn.Module):
         self.is_custom_mode = kw.get("is_custom_mode", False)
         self.is_no_links_mode = kw.get('is_no_links_mode', False)
         self.is_no_links_custom_mode = kw.get('is_no_links_custom_mode', False)
-        print(kw,'---')
         if self.is_no_links_mode: # config startswith n
             self.n_paf = 0
             assert n_stage == 3
             assert len(sigma_points) == n_stage
-            assert self.sigma_links is None
+            if self.sigma_links == [0]:
+                self.sigma_links = None
+            assert self.sigma_links is None, f'{self.sigma_links=}'
         elif self.is_no_links_custom_mode: # config startswith o
             self.n_paf = 0
             assert self.sigma_links is None
         elif not self.is_custom_mode:
-            assert len(sigma_points) == n_stage
             assert len(sigma_links) == n_stage
+            assert len(sigma_points) == n_stage, f'{len(sigma_points)=} {n_stage=}'
+            print(kw)
 
         self.backend = VGG19(no_weight=no_weight)
         backend_outp_feats = 128
@@ -168,16 +170,13 @@ class PAF(nn.Module):
             if pafs is not None:
                 loss_link += F.mse_loss(pafs, batch_gtl)
             # save img of each batch_gts
-
-            # for gts in heatmaps:
-            # for gts in batch_gts:
-            #     # gts = gts[1]
-            #     gts = torch.mean(gts, dim=0)
-            #     gts *= 5
-            #     print('gts', gts)
-            #     x = to_pil_image(gts)
-            #     x.save('temptemp.jpg')
-            #     1/0
+            def save_example():
+                for i, (gts, gtl) in enumerate(zip(batch_gts, batch_gtl)):
+                    x = to_pil_image(gts[0]) # only first keypoint
+                    x.save(f'temp_gts_{i}.jpg')
+                    x = to_pil_image(gtl[0])
+                    x.save(f'temp_gtl_{i}.jpg')
+                1/0
 
             # print('p stage',i, heatmaps.shape, batch_gts.shape)
             # print('l stage',i, pafs.shape, batch_gtl.shape)
