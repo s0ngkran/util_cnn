@@ -280,4 +280,13 @@ def config():
             "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
             "img_size": 360,
         },
+        # waiting for discussion
+        # "sth1": {
+        #     "multi_sigma": [1, 2, 4, 7],
+        #     "multi_sigma_weight": [1, 2, 1, 1],
+        # },
+        # "sth2": {
+        #     "multi_sigma": [1, 2, 4, 7],
+        #     "multi_sigma_weight": [2, 1, 1],
+        # }
     }
