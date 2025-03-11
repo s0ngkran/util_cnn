@@ -164,7 +164,7 @@ def test_forword(device='cuda'):
     sigma_points = [11.6, 11.6, 11.6]
     sigma_links = [11.6, 11.6, 11.6]
     links = [(0, 2) for i in range(18)]
-    img_size = 720
+    img_size = 64
     model = Model(sigma_points, sigma_links, links, img_size=img_size, no_weight=True).to(device)
     # img_size = 720
     input_tensor = torch.rand(2, 3, img_size, img_size).to(device)
@@ -316,6 +316,7 @@ def test_with_loader(device='cuda'):
         t.append(t3-t0)
         # mem = get_gpu_memory_info()
         # m.append(mem)
+        break
         if i > 2:
             break
     print(sum(t), 'sum', device)
@@ -363,9 +364,9 @@ class Model(PAF):
 
      
 if __name__ == '__main__':
-    # test_forword('cuda')
+    test_forword('cpu')
     # test_loss('cuda')
-    test_with_loader('cuda')
+    # test_with_loader('cpu')
     # for dataset in ['te', 'va', 'tr']:
     #     for img_size in [32, 64, 128, 256, 360, 720]:
     #         test_convert_heat('cpu', dataset, img_size)

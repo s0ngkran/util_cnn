@@ -102,6 +102,7 @@ class GTGen:
             xi, yi = int(x_list[i]), int(y_list[i])
             # print(xi, yi)
             gaus = big_gaussian_map[size-yi:size*2 - yi, size-xi:size*2 - xi]
+            # if this line error, please check the keypoint is in [0, 1]?
             tensor_gaussian_map[i] = gaus
         return tensor_gaussian_map
 
