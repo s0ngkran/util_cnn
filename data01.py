@@ -392,6 +392,8 @@ def plot():
 
 
 if __name__ == "__main__":
+    # test()
+    plot()
     # set seed of random number generator
     # random.seed(0)
     # torch.manual_seed(0)
