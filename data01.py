@@ -77,7 +77,8 @@ class MyDataset(Dataset):
     def __init__(self, dataset, img_size=0, test_mode=False, **kwargs):
         assert dataset in ["tr", "va", "te"]
         assert img_size in [64, 128, 256, 360, 720]
-        self.mode = kwargs.get('mode') # tested
+        self.raw_config = kwargs.get('raw_config')
+        self.mode = self.raw_config.get('data')
         self.dataset = dataset
         self.img_size = img_size
         data = self.read_data(dataset)

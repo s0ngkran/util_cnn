@@ -21,17 +21,16 @@ def init(model):
             m.bias.data.zero_()
 
 class Stage(nn.Module):
-    def __init__(self, backend_outp_feats, n_joints, n_paf, stage1, add_sigmoid=False):
+    def __init__(self, backend_outp_feats, n_joints, n_paf, isFirstStage, add_sigmoid=False):
         super(Stage, self).__init__()
         inp_feats = backend_outp_feats
-        self.n_paf = n_paf
-        if stage1:
+        if isFirstStage:
             self.block1 = self.make_paf_block_stage1(inp_feats, n_joints)
-            self.block2 = None if self.n_paf <= 0 else self.make_paf_block_stage1(inp_feats, n_paf, add_sigmoid)
+            self.block2 = None if n_paf <= 0 else self.make_paf_block_stage1(inp_feats, n_paf, add_sigmoid)
         else:
             inp_feats = backend_outp_feats + n_joints + n_paf
             self.block1 = self.make_paf_block_stage2(inp_feats, n_joints)
-            self.block2 = None if self.n_paf <= 0 else self.make_paf_block_stage2(inp_feats, n_paf, add_sigmoid)
+            self.block2 = None if n_paf <= 0 else self.make_paf_block_stage2(inp_feats, n_paf, add_sigmoid)
         init(self.block1)
         if self.block2 is not None:
             init(self.block2)

@@ -1,6 +1,7 @@
 import torch
 from torchvision.transforms.functional import to_pil_image
 import time
+from config import Const
 
 try:
     import matplotlib.pyplot as plt
@@ -17,6 +18,7 @@ class GTGen:
         self.is_custom_mode = kw.get("is_custom_mode", False)
         self.is_use_old_mode = kw.get("is_use_old_mode", False)
         self.is_no_links_custom_mode = kw.get('is_no_links_custom_mode', False)
+        self.is_single_point_left_shoulder = kw.get('raw_config').get('data') == Const.mode_single_point_left_shoulder
 
         if not self.is_custom_mode and not self.is_use_old_mode:
             self.is_use_old_mode = True
@@ -165,6 +167,8 @@ class GTGen:
         if self.is_custom_mode:
             sigma_links = self.sigma_links
         links = self.links
+        if self.is_single_point_left_shoulder:
+            return None
         size = self.img_size
         gt_link = torch.zeros((len(links) * 2, size, size))
         for i, (p1, p2) in enumerate(links):

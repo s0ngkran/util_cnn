@@ -11,7 +11,7 @@ from utils.gen_gt import *
 from utils.cuda import *
 from torch.utils.data import DataLoader
 from data01 import MyDataset, Data
-from config import config
+from config import config, Const
 
 try:
     import matplotlib.pyplot as plt
@@ -35,6 +35,7 @@ class PAF(nn.Module):
         **kw,
     ):
         super().__init__()
+        self.kw = kw
         if bi_mode:
             assert n_stage == 3
         self.bi_mode = bi_mode
@@ -66,12 +67,18 @@ class PAF(nn.Module):
             assert len(sigma_links) == n_stage
             assert len(sigma_points) == n_stage, f'{len(sigma_points)=} {n_stage=}'
             print(kw)
+        
+        self.is_single_point_left_shoulder = kw.get('raw_config').get('data') == Const.mode_single_point_left_shoulder
+        if self.is_single_point_left_shoulder:
+            self.n_joint = 1
+            self.n_paf = 0
+        self.is_donut_mode = kw.get('raw_config').get('mode') == 'donut'
 
         self.backend = VGG19(no_weight=no_weight)
         backend_outp_feats = 128
-        stages = [Stage(backend_outp_feats, n_point, self.n_paf, True)]
+        stages = [Stage(backend_outp_feats, self.n_joint, self.n_paf, True)]
         for i in range(n_stage - 1):
-            stages.append(Stage(backend_outp_feats, n_point, self.n_paf, False))
+            stages.append(Stage(backend_outp_feats, self.n_joint, self.n_paf, False))
         self.stages = nn.ModuleList(stages)
         self.gt_gen = self._init_gt_generator(
             img_size, sigma_points, sigma_links, links, **kw
@@ -95,6 +102,9 @@ class PAF(nn.Module):
         return txt
 
     def forward(self, x):
+        return self.forward_normal(x)
+
+    def forward_normal(self, x):
         img_feats = self.backend(x)
         cur_feats = img_feats
         heatmap_outs = []
@@ -130,6 +140,25 @@ class PAF(nn.Module):
         batch_gts = torch.stack(batch_gts).to(device)
         batch_gtl = None if batch_gtl[0] is None else torch.stack(batch_gtl).to(device)
         return batch_gts, batch_gtl
+    
+    def cal_loss_point(self, batch_gts, heatmap_out_i, i, size, device):
+        heatmaps = F.interpolate(heatmap_out_i, size=size, mode="bilinear").to(
+            device
+        )
+        # handle bi_mode
+        loss_point = 0
+        if self.bi_mode and i <= 1:
+            # already assert n_stages == 3 for bi_mode
+            batch_gts = self.to_binary(batch_gts, self.bi_thres)
+            loss_point = self.bce(heatmaps, batch_gts)
+        else:
+            loss_point = F.mse_loss(heatmaps, batch_gts)
+        return loss_point
+    
+    def cal_loss_link(self, batch_gtl, paf_outs, i, size, device):
+        pafs = F.interpolate(paf_outs[i], size=size, mode="bilinear").to(device)
+        loss_link = F.mse_loss(pafs, batch_gtl)
+        return loss_link
 
     def cal_loss(self, pred, gt, device="cuda"):
         gt = self.gen_gt(gt)
@@ -140,15 +169,9 @@ class PAF(nn.Module):
         n_stage = len(heatmap_outs)
         n_batch = len(heatmap_outs[0])
         size = (self.img_size, self.img_size)
-        pafs = None
         for i in range(n_stage):
             # scale to 720 (original size)
             # t1 = time.time()
-            heatmaps = F.interpolate(heatmap_outs[i], size=size, mode="bilinear").to(
-                device
-            )
-            if len(paf_outs) > 0:
-                pafs = F.interpolate(paf_outs[i], size=size, mode="bilinear").to(device)
             # t2 = time.time()
             batch_gts, batch_gtl = self.reshape_gt(n_batch, gt, i, device)
             # print(batch_gts.shape, 'batch gts shape')
@@ -158,25 +181,18 @@ class PAF(nn.Module):
             # print(batch_gts.shape, 'gts')
             # print(batch_gtl.shape, 'gtl')
             # t3 = time.time()
+            loss_point += self.cal_loss_point(batch_gts, heatmap_outs[i], i, size, device)
+            if len(paf_outs) > 0:
+                loss_link += self.cal_loss_link(batch_gtl, paf_outs, i, size, device)
 
-            # handle bi_mode
-            if self.bi_mode and i <= 1:
-                # already assert n_stages == 3 for bi_mode
-                batch_gts = self.to_binary(batch_gts, self.bi_thres)
-                loss_point += self.bce(heatmaps, batch_gts)
-            else:
-                loss_point += F.mse_loss(heatmaps, batch_gts)
-
-            if pafs is not None:
-                loss_link += F.mse_loss(pafs, batch_gtl)
             # save img of each batch_gts
-            def save_example():
-                for i, (gts, gtl) in enumerate(zip(batch_gts, batch_gtl)):
-                    x = to_pil_image(gts[0]) # only first keypoint
-                    x.save(f'temp_gts_{i}.jpg')
-                    x = to_pil_image(gtl[0])
-                    x.save(f'temp_gtl_{i}.jpg')
-                1/0
+            # def save_example():
+            #     for i, (gts, gtl) in enumerate(zip(batch_gts, batch_gtl)):
+            #         x = to_pil_image(gts[0]) # only first keypoint
+            #         x.save(f'temp_gts_{i}.jpg')
+            #         x = to_pil_image(gtl[0])
+            #         x.save(f'temp_gtl_{i}.jpg')
+            #     1/0
 
             # print('p stage',i, heatmaps.shape, batch_gts.shape)
             # print('l stage',i, pafs.shape, batch_gtl.shape)
@@ -184,10 +200,7 @@ class PAF(nn.Module):
         # print(t2-t1, 'interpolate')
         # print(t3-t2, 'prepare gt')
         # print(t4-t3, 'cal loss')
-        if pafs is not None:
-            sum_loss = loss_point + loss_link
-        else:
-            sum_loss = loss_point
+        sum_loss = loss_point + loss_link
         return sum_loss
 
     def _init_gt_generator(self, img_size, sigma_points, sigma_links, links, **kw):

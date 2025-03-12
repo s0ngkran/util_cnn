@@ -25,7 +25,9 @@ def plot_img(img, keypoint=None):
 
 def plot():
     img_size = 64
-    kw = {"mode": Const.mode_single_point_left_shoulder}
+    kw = {
+        "raw_config": {"data": Const.mode_single_point_left_shoulder}
+    }
     data = MyDataset("va", img_size, **kw)
     for i, d in enumerate(data):
         if i < 1:
