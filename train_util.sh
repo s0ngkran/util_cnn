@@ -54,7 +54,7 @@ wait_te(){
     fname=${weight}.${ep}
     echo "waiting save/${fname}";
     wait_for_file save/$fname;
-    sleep 10
+    # sleep 10
     te $fname "360 -d cpu -b 2 --weight save/${fname}";
     echo "done test $fname"
 }
@@ -86,9 +86,10 @@ tr_te_360(){
     args=$3
 
     wait_gpu 9;
-    tr $config $name $args
+    tr $config $name "$args"
     echo "done $config $name";
     sleep 100;
-    te ${config}_${name} "360 -d cuda -b 10";
-    echo "^auto run test()" >> acc;
+    # do not commit me
+    # te ${config}_${name} "360 -d cuda -b 10";
+    # echo "^auto run test()" >> acc;
 }

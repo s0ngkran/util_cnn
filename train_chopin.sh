@@ -81,16 +81,18 @@ tr_te_bi(){
 
     BATCH=10
     wait_gpu 9;
-    tr ${config} ${name} "-b ${BATCH} -lr -4 -s 700 -se 100 -col";
+    tr ${config} ${name} "-b ${BATCH} -lr -4 -s 700 -se 100";
     echo "done $config ${name}";
-    sleep 100;
-    te ${config}_${name} "360 -d cuda -b ${BATCH}";
-    echo "^auto run test()" >> acc;
+    # sleep 100;
+    # te ${config}_${name} "360 -d cuda -b ${BATCH}";
+    # echo "^auto run test()" >> acc;
 }
 
 # tr_te_bi bi10 IC_0&
 # tr_te_bi bi90 IC_0&
 # tr_te_bi bi50 IC_0&
+# tr_te_bi bi10 IC_1&
+# tr_te_bi bi10 IC_2&
 # wait
 # echo "done all 10 90 50";
 
@@ -101,29 +103,119 @@ tr_te_bi(){
 # done
 
 
+# config=4y
+# name=FC_0
+# BATCH=10
+# tr ${config} ${name} "-b ${BATCH} -lr -4 -s 700 -se 100";
 
 
 
-# for ep in {300..800..100}
+# for ep in {900..1300..100}
 # do
 #     config=bi50
 #     name=IC_0
 #     fname="${config}_${name}.$ep"
-#     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
 # done
 
-# for ep in {300..800..100}
-# do
-#     config=bi90
-#     name=IC_0
-#     fname="${config}_${name}.$ep"
-#     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
+# for ep in {900..1300..100}
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
 # done
-
-# for ep in {300..800..100}
+# for ep in {100..700..100}
 # do
 #     config=bi10
-#     name=IC_0
+#     name=IC_1
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+# for ep in {100..400..100}
+# do
+#     config=bi10
+#     name=IC_2
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for ep in {100..500..100}
+# do
+#     config=10x1x_550
+#     name=GClr4b10_0
 #     fname="${config}_${name}.$ep"
 #     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
 # done
+
+
+# s360_BMlr1_4.best
+# for fname in s720_BClr1b10_0.best s720_BClr1b10_1.best s720_BClr1b10_2.best s720_BClr1b10_3.best s720_BClr1b10_4.best
+# do
+#     python test.py $fname 720 -d cuda -b 2 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for fname in 4y_FC_0.100 4y_FC_0.1000 4y_FC_0.1100 4y_FC_0.200 4y_FC_0.300 4y_FC_0.400 4y_FC_0.500 4y_FC_0.600 4y_FC_0.700 4y_FC_0.800 4y_FC_0.900 4y_FC_0.best bi10_IC_1.100 bi10_IC_1.200 bi10_IC_1.300 bi10_IC_1.400 bi10_IC_1.500 bi10_IC_1.600 bi10_IC_1.700 bi10_IC_1.800 bi10_IC_1.900 bi10_IC_1.best bi10_IC_2.100 bi10_IC_2.1000 bi10_IC_2.1100 bi10_IC_2.1200 bi10_IC_2.1300 bi10_IC_2.1400 bi10_IC_2.1500 bi10_IC_2.200 bi10_IC_2.300 bi10_IC_2.400 bi10_IC_2.500 bi10_IC_2.600 bi10_IC_2.700 bi10_IC_2.800 bi10_IC_2.900 bi10_IC_2.best
+# do
+#     echo $fname;
+#     python test.py $fname 360 -d cuda -b 20 --pred_keypoints --weight save/$fname;
+# done
+
+
+config="m1"
+name="JC_0"
+# wait_gpu 25;
+# tr ${config} ${name} "-cus -fs 1500"&
+
+
+# tr m1 JC_0 "-col -cus -b 10 -lr -4 -fs 1500 -se 100"&
+# tr m2 JC_0 "-col -cus -b 10 -lr -4 -fs 1500 -se 100"&
+# tr m3 JC_0 "-col -cus -b 10 -lr -4 -fs 1500 -se 100"&
+
+test_m(){
+    config=$1
+    name=$2
+    ep=$3
+    fname="${config}_$name.$ep"
+    python test.py $fname 360 -d cuda -b 20 --pred_keypoints -cus --weight save/$fname;
+
+    # how to use
+    # test_m m1 JC_0 best
+}
+
+test_m_fname(){
+    fname=$1
+    echo "testing... $fname"
+    python test.py $fname 360 -d cuda -b 30 --pred_keypoints -cus --weight save/$fname;
+}
+test_no_cus(){
+    fname=$1
+    echo "testing... $fname"
+    python test.py $fname 360 -d cuda -b 30 --pred_keypoints --weight save/$fname;
+}
+
+# test_m m1 JC_0 best;
+# test_m m2 JC_0 best;
+# test_m m3 JC_0 best;
+a(){
+    for fname in m1_JC_0.1000 m1_JC_0.1100 m1_JC_0.1200 m1_JC_0.1300 m1_JC_0.1400 m1_JC_0.1500 m1_JC_0.1600 m1_JC_0.1700 m1_JC_0.1800 m1_JC_0.200 m1_JC_0.300 m1_JC_0.400 m1_JC_0.500 m1_JC_0.600 m1_JC_0.700 m1_JC_0.800 m1_JC_0.900 m1_JC_0.best
+    do
+        test_m_fname "$fname"
+    done
+}
+
+
+# tr m2 KC_0 "-cus -b 20 -lr -4 -fs 1500 -se 100"&
+# tr n1 LC_0 "-b 20 -lr -4 -fs 1500 -se 100"&
+# tr n1 LC_1 "-b 20 -lr -4 -fs 1500 -se 100";
+# tr n1 LC_2 "-b 20 -lr -4 -fs 1500 -se 100";
+# tr n1 LC_3 "-b 20 -lr -4 -fs 1500 -se 100";
+tr m2 KCC_0 "-cus -b 20 -lr -4 -fs 1500 -se 100";
+
+# test_m_fname m2_KC_0.best
+# test_no_cus n1_LC_0.best
+ 
+# for fname in n1_LC_0.100 n1_LC_0.1000 n1_LC_0.1100 n1_LC_0.1200 n1_LC_0.1300 n1_LC_0.1400 n1_LC_0.1500 n1_LC_0.1600 n1_LC_0.200 n1_LC_0.300 n1_LC_0.400 n1_LC_0.500 n1_LC_0.600 n1_LC_0.700 n1_LC_0.800 n1_LC_0.900
+# do
+#     echo $fname
+#     test_no_cus "$fname"
+# done
+

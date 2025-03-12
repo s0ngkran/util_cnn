@@ -1,3 +1,4 @@
+# checked!!! divided 720 is correct
 CUSTOM_SIGMA_LINKS = [
     x / 720
     for x in [
@@ -23,6 +24,7 @@ CUSTOM_SIGMA_LINKS = [
     ]
 ]
 
+# checked!!! divided 720 is correct config
 CUSTOM_SIGMA_POINTS = [
     x / 720
     for x in [
@@ -47,6 +49,10 @@ CUSTOM_SIGMA_POINTS = [
         11.6,
     ]
 ]
+
+
+class Const:
+    mode_single_point_left_shoulder = "single-point-left-shoulder"
 
 
 def config():
@@ -255,13 +261,80 @@ def config():
         "m1": {
             "sigma_points": CUSTOM_SIGMA_POINTS,
             "sigma_links": CUSTOM_SIGMA_LINKS,
+            "img_size": 360,
         },
         "m2": {
             "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
             "sigma_links": CUSTOM_SIGMA_LINKS,
+            "img_size": 360,
         },
         "m3": {
             "sigma_points": [x * 3 for x in CUSTOM_SIGMA_POINTS],
             "sigma_links": CUSTOM_SIGMA_LINKS,
+            "img_size": 360,
+        },
+        # n is for no sigma link
+        "n1": {
+            # "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
+            "sigma_points": [ref2, ref2, ref2],
+            "img_size": 360,
+        },
+        # o is for no sigma link with custom sigma point
+        "o1": {
+            "sigma_points": [x * 2 for x in CUSTOM_SIGMA_POINTS],
+            "img_size": 360,
+        },
+        # waiting for discussion
+        # "sth1": {
+        #     "multi_sigma": [1, 2, 4, 7],
+        #     "multi_sigma_weight": [1, 2, 1, 1],
+        # },
+        # "sth2": {
+        #     "multi_sigma": [1, 2, 4, 7],
+        #     "multi_sigma_weight": [2, 1, 1],
+        # }
+        "s-heat": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref2, ref2, ref2],
+            "sigma_links": [ref2, ref2, ref2],
+            "img_size": 128,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
+
+        },
+        "s-donut": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref2, ref2, ref2],
+            "sigma_links": [ref2, ref2, ref2],
+            "img_size": 128,
+            "mode": "donut",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "donut",
+        },
+        "s-label-c": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref1, ref2, ref4],
+            "sigma_links": [ref1, ref2, ref4],
+            "img_size": 128,
+            "mode": "label-encoding-add-channel",
+            "data_aug": [ref1, ref2, ref4],
+            "data_aug_weight": [1, 2, 1],
+            "data_in": "img+channel",
+            "loss": "mse",
+            "remark": "vgg pretrained have only 3 channels",
+        },
+        "s-label-f": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref1, ref2, ref4],
+            "sigma_links": [ref1, ref2, ref4],
+            "img_size": 128,
+            "mode": "label-encoding-filter",
+            "data_aug": [ref1, ref2, ref4],
+            "data_aug_weight": [1, 2, 1],
+            "data_in": "img+unique_filter",
+            "loss": "mse",
         },
     }

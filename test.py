@@ -12,6 +12,7 @@ from utils.setting import Setting
 import torch.nn as nn
 loss_func = nn.CrossEntropyLoss()
 from argparse import ArgumentParser
+from config import config, Const
 
 def do_nothing(k):
     return k
@@ -25,14 +26,28 @@ if __name__ == '__main__':
     parser.add_argument('-nw', '--n_worker', help='n_worker', type=int)
     parser.add_argument('-d', '--device') 
     parser.add_argument('--weight') 
+    parser.add_argument('-cus', '--is_custom_mode', action="store_true") 
     parser.add_argument('--pred_keypoints', action="store_true") 
+    parser.add_argument('--config') 
     args = parser.parse_args()
     assert args.device in [None, 'cpu', 'cuda']
     print(args)
+
+    if args.is_custom_mode:
+        assert args.name.startswith('m')
     img_size = int(args.img_size)
+
+    training = config()[args.config]
+    is_no_links_mode = args.name.startswith('n')
+    is_no_links_custom_mode = args.name.startswith('o')
     model_kwargs = {
+        "raw_config": training,
+        'is_custom_mode': args.is_custom_mode,
+        'is_no_links_mode': is_no_links_mode,
+        'is_no_links_custom_mode': is_no_links_custom_mode,
     }
     data_kwargs = {
+        "raw_config": training
     }
 
     ############################ config ###################
@@ -95,7 +110,11 @@ if __name__ == '__main__':
                 last = heats[2]
                 output_size = last.shape[-1]
 
-                pred_batch = model.get_pred(output, Data.pred_from_keypoint)
+                pred_func = Data.pred_from_keypoint
+                if training.get('data', None) == Const.mode_single_point_left_shoulder:
+                    pred_func = lambda x: 'single point'
+                    print('single_point')
+                pred_batch = model.get_pred(output, pred_func)
                 pred_list = pred_list + pred_batch # indexes
 
                 gt_list.extend([gt for gt in dat['gt']]) 
@@ -117,10 +136,12 @@ if __name__ == '__main__':
                     'gt_list': gt_list,
                     'key_list': key_list,
                   }
-            torch.save(out, os.path.join(TESTING_FOLDER,f'{args.name}.res'))
+            path = os.path.join(TESTING_FOLDER,f'{args.name}.res')
+            torch.save(out, path)
+            print('saved keypoints ->', path)
             corr = [gt==pr for gt, pr in zip(gt_list, pred_list)]
             acc = sum(corr)/len(gt_list)
         return float(acc)
 
     acc = test()
-    print(f'acc {args.name} =', acc)
+    print(f'acc {args.name} =', acc, '(donot use this acc, this value not scaled up. use pred_keypoints)')

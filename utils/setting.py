@@ -83,7 +83,7 @@ class Setting:
             def to_list(s):
                 s = s.replace('[', '').replace(']', '')
                 out = s.split(',')
-                return [float(n) for n in out]
+                return [(float(n) if n != 'None' else 0) for n in out]
             model_data = {
                 'model_type': parts[0],
                 'n_joint': int(parts[2].split('=')[1]),

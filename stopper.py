@@ -1,12 +1,18 @@
 class Stopper:
-    def __init__(self, epoch=0, min_epoch=None, best_loss=None):
+    def __init__(self, epoch=0, min_epoch=None, best_loss=None, force_stop=None):
         self.epoch = epoch
         self.best_loss = best_loss
         self.counter = 0
         self.min_epoch = 100 if min_epoch is None else min_epoch
+        self.force_stop = force_stop
 
-    def __call__(self, val_loss):
-        self.epoch += 1
+    def __call__(self, val_loss, epoch=None):
+        if epoch is None:
+            self.epoch += 1
+        else:
+            self.epoch = epoch
+        if self.force_stop is not None and self.epoch >= self.force_stop:
+            return True
         if self.epoch < self.min_epoch:
             return False
         patience = self.epoch//4

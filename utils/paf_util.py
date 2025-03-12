@@ -21,18 +21,20 @@ def init(model):
             m.bias.data.zero_()
 
 class Stage(nn.Module):
-    def __init__(self, backend_outp_feats, n_joints, n_paf, stage1, add_sigmoid=False):
+    def __init__(self, backend_outp_feats, n_joints, n_paf, isFirstStage, add_sigmoid=False):
         super(Stage, self).__init__()
         inp_feats = backend_outp_feats
-        if stage1:
+        if isFirstStage:
             self.block1 = self.make_paf_block_stage1(inp_feats, n_joints)
-            self.block2 = self.make_paf_block_stage1(inp_feats, n_paf, add_sigmoid)
+            self.block2 = None if n_paf <= 0 else self.make_paf_block_stage1(inp_feats, n_paf, add_sigmoid)
         else:
             inp_feats = backend_outp_feats + n_joints + n_paf
             self.block1 = self.make_paf_block_stage2(inp_feats, n_joints)
-            self.block2 = self.make_paf_block_stage2(inp_feats, n_paf, add_sigmoid)
+            self.block2 = None if n_paf <= 0 else self.make_paf_block_stage2(inp_feats, n_paf, add_sigmoid)
         init(self.block1)
-        init(self.block2)
+        if self.block2 is not None:
+            init(self.block2)
+            
 
 
     def make_paf_block_stage1(self, inp_feats, output_feats, add_sigmoid=False):
@@ -63,7 +65,7 @@ class Stage(nn.Module):
 
     def forward(self, x):
         y1 = self.block1(x)
-        y2 = self.block2(x)
+        y2 = None if self.block2 is None else self.block2(x)
         return y1, y2
 
 
@@ -85,8 +87,9 @@ class VGG19(nn.Module):
                                                make_standard_block(256, 128, 3))
         init(self.feature_extractor)
 
-    def forward(self, x):
-        x = self.vgg(x)
+    def forward(self, batch_img):
+        x = self.vgg(batch_img)
         x = self.feature_extractor(x)
         # print('out vgg', x.shape)
         return x
+
