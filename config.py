@@ -292,4 +292,36 @@ def config():
         #     "multi_sigma": [1, 2, 4, 7],
         #     "multi_sigma_weight": [2, 1, 1],
         # }
+        "s-heat": {
+            "data": Const.mode_single_point_left_shoulder,
+            "img_size": 128,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
+        },
+        "s-donut": {
+            "data": Const.mode_single_point_left_shoulder,
+            "img_size": 128,
+            "mode": "donut",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "donut",
+        },
+        "s-label-c": {
+            "data": Const.mode_single_point_left_shoulder,
+            "img_size": 128,
+            "mode": "label-encoding-add-channel",
+            "data_aug": [1, 2, 4],
+            "data_in": "img+channel",
+            "loss": "mse"
+        },
+        "s-label-f": {
+            "data": Const.mode_single_point_left_shoulder,
+            "img_size": 128,
+            "mode": "label-encoding-filter",
+            "data_aug": [1, 2, 4],
+            "data_in": "img+unique_filter",
+            "loss": "mse"
+        },
     }
