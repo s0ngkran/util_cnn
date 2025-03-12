@@ -125,10 +125,98 @@ source $(dirname $0)/train_util.sh;
 # done
 
 
-tr 4x1x_500 H2B_0 "-pi2 95 -b 10 -lr -4 -s 900 -w 4x1x_550_GBlr4b10_0.500"&
+# tr 4x1x_550 H2B_0 "-pi2 95 -b 10 -lr -4 -s 900 -w 4x1x_550_GBlr4b10_0.500"&
 
-for ep in {550..1600..50}
-do
-    echo "wait ep$ep...";
-    wait_te 4x1x_500_H2B_0 $ep ;
-done
+# for ep in {550..1600..50}
+# do
+#     echo "wait ep$ep...";
+#     wait_te 4x1x_550_H2B_0 $ep ;
+# done
+
+# args="-b 10 -lr -4 -s 900 -se 100"
+# tr_te_360 10y FB_0 "--batch_size 10 -lr -4 -s 900 -se 100";
+
+
+# args='-b 10 -lr -4 -s 900 -se 100'
+# tr_te_360 4y FB_0 "$args";
+# tr_te_360 7y FB_0 "$args";
+# tr_te_360 13y FB_0 "$args";
+# tr_te_360 10y FB_0 "$args";
+# tr_te_360 1y FB_0 "$args";
+
+
+# for ep in {100..1200..100}
+# do
+#     config=4y
+#     name=FB_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for ep in {100..500..100}
+# do
+#     config=4x1x
+#     name=550_GBlr4b10_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for config in 4y 10y
+# do
+#     name=FB_0
+#     ep=best
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for fname in s64_BBlr1_0.best s64_BBlr1_1.best s64_BBlr1_2.best s64_BBlr1_3.best s64_BBlr1_4.best
+# do
+#    python test.py $fname 64 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for fname in s128_BBlr1_0.best s128_BBlr1_1.best s128_BBlr1_2.best s128_BBlr1_3.best s128_BBlr1_4.best
+# do
+#    python test.py $fname 128 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+
+
+# for fname in s256_BBlr1_0.best s256_BBlr1_1.best s256_BBlr1_2.best s256_BBlr1_3.best s256_BBlr1_4.best s256_BBlr1_5.best
+# do
+#    python test.py $fname 256 -d cuda -b 10 --pred_keypoints --weight save/$fname;
+# done
+
+
+# fname=7y_FB_0.best
+# python test.py $fname 360 -d cpu -b 10 --pred_keypoints --weight save/$fname;
+
+
+
+args="-b 10 -lr -4 -se 100 -fs 2000 -s 2000";
+# tr_te_360 10y FB_1 "$args";
+# tr_te_360 7y FB_1 "$args";
+# tr_te_360 4y FB_1 "$args";
+# tr_te_360 10y FB_2 "$args -col";
+# tr_te_360 7y FB_2 "$args";
+# tr_te_360 10y FB_3 "$args";
+# tr_te_360 13y FB_1 "$args";
+# tr_te_360 m2 KBB_0 "$args";
+# tr_te_360 1y FB_10 "$args"; # can continue
+tr_te_360 1y FB_11 "$args";
+tr_te_360 1y FB_12 "$args";
+tr_te_360 4y FB_10 "$args";
+tr_te_360 10y FB_10 "$args";
+tr_te_360 13y FB_10 "$args";
+tr_te_360 13y FB_11 "$args";
+
+
+# for fname in m2_KBB_0.best
+# do
+#  python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname -cus;
+# done
+
+
+
