@@ -104,39 +104,26 @@ tr_te_bi(){
 
 
 
-for ep in {300..800..100}
-do
-    config=bi50
-    name=IC_0
-    fname="${config}_${name}.$ep"
-    python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
-done
+# for ep in {300..800..100}
+# do
+#     config=bi50
+#     name=IC_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
+# done
 
-for ep in {300..800..100}
-do
-    config=bi90
-    name=IC_0
-    fname="${config}_${name}.$ep"
-    python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
-done
+# for ep in {300..800..100}
+# do
+#     config=bi90
+#     name=IC_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
+# done
 
-for ep in {300..800..100}
-do
-    config=bi10
-    name=IC_0
-    fname="${config}_${name}.$ep"
-    python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
-done
-
-# bi10_IC_0.300
-# bi10_IC_0.400
-# bi10_IC_0.best
-# bi10_IC_0.last
-# bi50_IC_0.300
-# bi50_IC_0.400
-# bi50_IC_0.best
-# bi50_IC_0.last
-# bi90_IC_0.300
-# bi90_IC_0.400
-# bi90_IC_0.best
-# bi90_IC_0.last
+# for ep in {300..800..100}
+# do
+#     config=bi10
+#     name=IC_0
+#     fname="${config}_${name}.$ep"
+#     python test.py $fname 360 -d cuda -b 5 --pred_keypoints --weight save/$fname;
+# done
