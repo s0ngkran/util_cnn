@@ -68,7 +68,7 @@ if args.pilot:
     )
 
 if args.is_custom_mode:
-    assert args.config.startswith('m')
+    assert args.config.startswith("m")
 
 pilot2_num = 0 if args.pilot2 is None else int(args.pilot2)
 # assert pilot2_num > 0  # you can delete this line; message from sk
@@ -91,21 +91,24 @@ img_size = training.get("img_size")
 
 assert args.device in [None, "cpu", "cuda"]
 
-bi_mode = 'bi_thres' in training 
-bi_thres = training.get('bi_thres')
-is_no_links_mode = args.config.startswith('n')
-is_no_links_custom_mode = args.config.startswith('o')
+bi_mode = "bi_thres" in training
+bi_thres = training.get("bi_thres")
+is_no_links_mode = args.config.startswith("n")
+is_no_links_custom_mode = args.config.startswith("o")
 model_kwargs = {
-    'img_size': img_size,
-    'bi_mode': bi_mode,
-    'bi_thres': bi_thres,
-    'is_custom_mode': args.is_custom_mode,
-    'is_no_links_mode': is_no_links_mode,
-    'is_no_links_custom_mode': is_no_links_custom_mode,
+    "raw_config": training,
+    "img_size": img_size,
+    "bi_mode": bi_mode,
+    "bi_thres": bi_thres,
+    "is_custom_mode": args.is_custom_mode,
+    "is_no_links_mode": is_no_links_mode,
+    "is_no_links_custom_mode": is_no_links_custom_mode,
 }
 
 # print('sssss', args.is_custom_mode)
-data_kwargs = {}
+data_kwargs = {
+    "raw_config": training
+}
 ############################ config ###################
 TRAINING_JSON = "tr"
 VALIDATION_JSON = "va"
@@ -176,9 +179,7 @@ best_ep = 0
 
 def update_sigma(new_sigma_points, new_sigma_links):
     global model, optimizer, sigma_points
-    model = Model(
-        new_sigma_points, new_sigma_links, links, **model_kwargs
-    ).to(DEVICE)
+    model = Model(new_sigma_points, new_sigma_links, links, **model_kwargs).to(DEVICE)
     model.load_state_dict(model.state_dict())
     optimizer = torch.optim.Adam(model.parameters())
     sigma_points = new_sigma_points
@@ -265,7 +266,7 @@ def train(profile=False):
         if iteration == last_iter and profile:
             t2 = time.time()
         if CHECKING:
-            print(f'{iteration=} {loss.item()=}')
+            print(f"{iteration=} {loss.item()=}")
     loss = avg(losses)
     if profile:
         print("n_iter=", n)
@@ -373,7 +374,7 @@ def main():
                     "sigma_links_2": SIGMA_LINKS_2,
                 }
             )
-        if args.pilot2 and epoch > 550 + 20*50:
+        if args.pilot2 and epoch > 550 + 20 * 50:
             break
         if args.pilot2 and epoch in [510 + i * 50 for i in range(20)]:
             # start 500

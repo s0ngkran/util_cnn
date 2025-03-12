@@ -10,10 +10,11 @@ from torch.utils.data import DataLoader
 from utils.func import get_dist
 import random
 import math
+from config import Const
 
 try:
     import matplotlib.pyplot as plt
-except:
+except:  # noqa: E722
     pass
 
 root = "../poh_vr_1k"
@@ -76,6 +77,8 @@ class MyDataset(Dataset):
     def __init__(self, dataset, img_size=0, test_mode=False, **kwargs):
         assert dataset in ["tr", "va", "te"]
         assert img_size in [64, 128, 256, 360, 720]
+        self.raw_config = kwargs.get('raw_config')
+        self.mode = self.raw_config.get('data')
         self.dataset = dataset
         self.img_size = img_size
         data = self.read_data(dataset)
@@ -94,15 +97,27 @@ class MyDataset(Dataset):
         for d in self.data:
             if key == d.key:
                 return d
+    
+    def manage_keypoint(self, keypoint):
+        if self.mode == Const.mode_single_point_left_shoulder:
+            keypoint = self.only_single_point_left_shoulder(keypoint)
+        return keypoint
+
+    def only_single_point_left_shoulder(self, keypoint): # tested
+        index_of_left_shoulder = 4
+        keypoint = [k for i, k in enumerate(keypoint) if i == index_of_left_shoulder]
+        assert len(keypoint) == 1
+        return keypoint
 
     def __getitem__(self, idx):
         data = self.data[idx]
         img_path = data.img_path
-        img, keypoint = self.load_img(img_path, data.keypoint)
+        new_keypoint = self.manage_keypoint(data.keypoint)
+        img, keypoint = self.load_img(img_path, new_keypoint)
         ans = {
             "inp": img,
             "keypoint": keypoint,
-            "gt": data.gt,
+            "gt": data.gt, # gt index ex. 4(int)
             "key": data.key,
         }
         return ans
@@ -354,44 +369,8 @@ def test():
     print(t1-t0, 's')
     time.sleep(10)
     
-
-
-def plot_img(img, keypoint=None):
-    img_color_mean = img.permute(1, 2, 0).numpy()
-    plt.imshow(img_color_mean)
-
-    img_size = img.shape[-1]
-
-    if keypoint is not None:
-        for i, (x, y) in enumerate(keypoint):
-            x, y = x * img_size, y * img_size
-            plt.plot(x, y, "or")
-            plt.text(x, y, str(i))
-    plt.show()
-
-
-def plot():
-    img_size = 64
-    data = MyDataset("va", img_size)
-    for i, d in enumerate(data):
-        if i < 1:
-            continue
-        img = d["inp"]
-        keypoint = d["keypoint"]
-        # print(keypoint)
-        print(i)
-        for x, y in keypoint:
-            if x > 1:
-                print(x)
-                plot_img(img, keypoint)
-                1 / 0
-
-            if y > 1:
-                print(y)
-                1 / 0
-
-
 if __name__ == "__main__":
+    # test()
     # set seed of random number generator
     # random.seed(0)
     # torch.manual_seed(0)
