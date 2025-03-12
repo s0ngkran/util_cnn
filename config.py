@@ -50,6 +50,9 @@ CUSTOM_SIGMA_POINTS = [
     ]
 ]
 
+class Const:
+    mode_single_point_left_shoulder = 'single-point-left-shoulder'
+
 
 def config():
     ref = 11.6
