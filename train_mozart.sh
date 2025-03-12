@@ -157,8 +157,18 @@ tr_te(){
 # done
 
 
-for fname in 2y_FMlr4b10_3.100 2y_FMlr4b10_3.1000 2y_FMlr4b10_3.1100 2y_FMlr4b10_3.1200 2y_FMlr4b10_3.1300 2y_FMlr4b10_3.1400 2y_FMlr4b10_3.1500 2y_FMlr4b10_3.1600 2y_FMlr4b10_3.1700 2y_FMlr4b10_3.1800 2y_FMlr4b10_3.1900 2y_FMlr4b10_3.200 2y_FMlr4b10_3.2000 2y_FMlr4b10_3.2100 2y_FMlr4b10_3.300 2y_FMlr4b10_3.400 2y_FMlr4b10_3.500 2y_FMlr4b10_3.600 2y_FMlr4b10_3.700 2y_FMlr4b10_3.800 2y_FMlr4b10_3.900 2y_FMlr4b10_3.best 2y_FMlr4b10_4.100 2y_FMlr4b10_4.1000 2y_FMlr4b10_4.1100 2y_FMlr4b10_4.1200 2y_FMlr4b10_4.1300 2y_FMlr4b10_4.1400 2y_FMlr4b10_4.1500 2y_FMlr4b10_4.1600 2y_FMlr4b10_4.1700 2y_FMlr4b10_4.1800 2y_FMlr4b10_4.1900 2y_FMlr4b10_4.200 2y_FMlr4b10_4.2000 2y_FMlr4b10_4.2100 2y_FMlr4b10_4.2200 2y_FMlr4b10_4.2300 2y_FMlr4b10_4.2400 2y_FMlr4b10_4.2500 2y_FMlr4b10_4.2600 2y_FMlr4b10_4.2700 2y_FMlr4b10_4.2800 2y_FMlr4b10_4.300 2y_FMlr4b10_4.400 2y_FMlr4b10_4.500 2y_FMlr4b10_4.600 2y_FMlr4b10_4.700 2y_FMlr4b10_4.800 2y_FMlr4b10_4.900 2y_FMlr4b10_4.best 2y_FMlr4b10_5.100 2y_FMlr4b10_5.1000 2y_FMlr4b10_5.1100 2y_FMlr4b10_5.1200 2y_FMlr4b10_5.1300 2y_FMlr4b10_5.1400 2y_FMlr4b10_5.1500 2y_FMlr4b10_5.1600 2y_FMlr4b10_5.1700 2y_FMlr4b10_5.1800 2y_FMlr4b10_5.1900 2y_FMlr4b10_5.200 2y_FMlr4b10_5.2000 2y_FMlr4b10_5.2100 2y_FMlr4b10_5.2200 2y_FMlr4b10_5.300 2y_FMlr4b10_5.400 2y_FMlr4b10_5.500 2y_FMlr4b10_5.600 2y_FMlr4b10_5.700 2y_FMlr4b10_5.800 2y_FMlr4b10_5.900 2y_FMlr4b10_5.best
-do
-    echo $fname
-    python test.py $fname 360 -d cuda -b 50 --pred_keypoints --weight save/$fname;
-done
+# for fname in 2y_FMlr4b10_3.100 2y_FMlr4b10_3.1000 2y_FMlr4b10_3.1100 2y_FMlr4b10_3.1200 2y_FMlr4b10_3.1300 2y_FMlr4b10_3.1400 2y_FMlr4b10_3.1500 2y_FMlr4b10_3.1600 2y_FMlr4b10_3.1700 2y_FMlr4b10_3.1800 2y_FMlr4b10_3.1900 2y_FMlr4b10_3.200 2y_FMlr4b10_3.2000 2y_FMlr4b10_3.2100 2y_FMlr4b10_3.300 2y_FMlr4b10_3.400 2y_FMlr4b10_3.500 2y_FMlr4b10_3.600 2y_FMlr4b10_3.700 2y_FMlr4b10_3.800 2y_FMlr4b10_3.900 2y_FMlr4b10_3.best 2y_FMlr4b10_4.100 2y_FMlr4b10_4.1000 2y_FMlr4b10_4.1100 2y_FMlr4b10_4.1200 2y_FMlr4b10_4.1300 2y_FMlr4b10_4.1400 2y_FMlr4b10_4.1500 2y_FMlr4b10_4.1600 2y_FMlr4b10_4.1700 2y_FMlr4b10_4.1800 2y_FMlr4b10_4.1900 2y_FMlr4b10_4.200 2y_FMlr4b10_4.2000 2y_FMlr4b10_4.2100 2y_FMlr4b10_4.2200 2y_FMlr4b10_4.2300 2y_FMlr4b10_4.2400 2y_FMlr4b10_4.2500 2y_FMlr4b10_4.2600 2y_FMlr4b10_4.2700 2y_FMlr4b10_4.2800 2y_FMlr4b10_4.300 2y_FMlr4b10_4.400 2y_FMlr4b10_4.500 2y_FMlr4b10_4.600 2y_FMlr4b10_4.700 2y_FMlr4b10_4.800 2y_FMlr4b10_4.900 2y_FMlr4b10_4.best 2y_FMlr4b10_5.100 2y_FMlr4b10_5.1000 2y_FMlr4b10_5.1100 2y_FMlr4b10_5.1200 2y_FMlr4b10_5.1300 2y_FMlr4b10_5.1400 2y_FMlr4b10_5.1500 2y_FMlr4b10_5.1600 2y_FMlr4b10_5.1700 2y_FMlr4b10_5.1800 2y_FMlr4b10_5.1900 2y_FMlr4b10_5.200 2y_FMlr4b10_5.2000 2y_FMlr4b10_5.2100 2y_FMlr4b10_5.2200 2y_FMlr4b10_5.300 2y_FMlr4b10_5.400 2y_FMlr4b10_5.500 2y_FMlr4b10_5.600 2y_FMlr4b10_5.700 2y_FMlr4b10_5.800 2y_FMlr4b10_5.900 2y_FMlr4b10_5.best
+# do
+#     echo $fname
+#     python test.py $fname 360 -d cuda -b 50 --pred_keypoints --weight save/$fname;
+# done
+
+
+args="-b 30 -lr -4 -se 100 -fs 1000 -s 999";
+# tr s-heat SS_1 "$args"
+# tr s-heat-256 SSB_1 "$args";
+tr s-heat-scaled-256 SSC_M01 "$args";
+
+# fname="s-heat_SS_1.best"
+# fname="s-heat_SS_2.best"
+# python test.py $fname 128 -d cuda -b 1 --config s-heat --pred_keypoints --weight save/$fname;

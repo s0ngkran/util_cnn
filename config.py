@@ -62,6 +62,7 @@ def config():
     ref3 = ref * 3
     ref4 = ref * 4
     ref10 = ref * 10
+    scaledRef2 = ref2*256/720 # 2x in 720 = best. So, try 2x in 256 
     return {
         # image size -> acc
         "s720": {
@@ -303,6 +304,27 @@ def config():
             "data_in": "img",
             "loss": "mse",
 
+        },
+        "s-heat-256": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref2, ref2, ref2],
+            "sigma_links": [ref2, ref2, ref2],
+            "img_size": 256,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
+
+        },
+        "s-heat-scaled-256": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [scaledRef2, scaledRef2, scaledRef2],
+            "sigma_links": [scaledRef2, scaledRef2, scaledRef2],
+            "img_size": 256,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
         },
         "s-donut": {
             "data": Const.mode_single_point_left_shoulder,
