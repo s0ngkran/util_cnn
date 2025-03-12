@@ -51,28 +51,30 @@ class PAF(nn.Module):
         assert n_link == len(links)
         assert n_stage > 0
         self.is_custom_mode = kw.get("is_custom_mode", False)
-        self.is_no_links_mode = kw.get('is_no_links_mode', False)
-        self.is_no_links_custom_mode = kw.get('is_no_links_custom_mode', False)
-        if self.is_no_links_mode: # config startswith n
+        self.is_no_links_mode = kw.get("is_no_links_mode", False)
+        self.is_no_links_custom_mode = kw.get("is_no_links_custom_mode", False)
+        if self.is_no_links_mode:  # config startswith n
             self.n_paf = 0
             assert n_stage == 3
             assert len(sigma_points) == n_stage
             if self.sigma_links == [0]:
                 self.sigma_links = None
-            assert self.sigma_links is None, f'{self.sigma_links=}'
-        elif self.is_no_links_custom_mode: # config startswith o
+            assert self.sigma_links is None, f"{self.sigma_links=}"
+        elif self.is_no_links_custom_mode:  # config startswith o
             self.n_paf = 0
             assert self.sigma_links is None
         elif not self.is_custom_mode:
             assert len(sigma_links) == n_stage
-            assert len(sigma_points) == n_stage, f'{len(sigma_points)=} {n_stage=}'
+            assert len(sigma_points) == n_stage, f"{len(sigma_points)=} {n_stage=}"
             print(kw)
-        
-        self.is_single_point_left_shoulder = kw.get('raw_config').get('data') == Const.mode_single_point_left_shoulder
+
+        self.is_single_point_left_shoulder = (
+            kw.get("raw_config").get("data") == Const.mode_single_point_left_shoulder
+        )
         if self.is_single_point_left_shoulder:
             self.n_joint = 1
             self.n_paf = 0
-        self.is_donut_mode = kw.get('raw_config').get('mode') == 'donut'
+        self.is_donut_mode = kw.get("raw_config").get("mode") == "donut"
 
         self.backend = VGG19(no_weight=no_weight)
         backend_outp_feats = 128
@@ -140,27 +142,96 @@ class PAF(nn.Module):
         batch_gts = torch.stack(batch_gts).to(device)
         batch_gtl = None if batch_gtl[0] is None else torch.stack(batch_gtl).to(device)
         return batch_gts, batch_gtl
-    
-    def cal_loss_point(self, batch_gts, heatmap_out_i, i, size, device):
-        heatmaps = F.interpolate(heatmap_out_i, size=size, mode="bilinear").to(
-            device
-        )
+
+    def cal_donut_loss(self, heatmaps, batch_gts, donut_thres_out, donut_thres_in, **kw):
+        donut_mask_out = (batch_gts > donut_thres_out).float() 
+        # _1111111_
+        '''
+        -------
+        -11111-
+        -11111-
+        -11111-
+        -------
+        '''
+        donut_mask_in = (batch_gts < donut_thres_in).float()
+        # 1111___1111
+        '''
+        1111111
+        1111111
+        11---11
+        1111111
+        1111111
+        '''
+        donut_mask = donut_mask_out * donut_mask_in
+        # __11___11___
+        '''
+        -------
+        -11111-
+        -1---1-
+        -11111-
+        -------
+        '''
+        inverted_donut_mask = 1 - donut_mask ## checked
+        masked_heatmaps = heatmaps * inverted_donut_mask ## checked
+        masked_batch_gts = batch_gts * inverted_donut_mask ## checked
+        loss = F.mse_loss(masked_heatmaps, masked_batch_gts)
+
+        # plt.imshow(donut_mask_out[0][0].cpu())
+        # plt.title('donut mask out')
+        # plt.show()
+        # plt.imshow(donut_mask_in[0][0].cpu())
+        # plt.title('donut mask in')
+        # plt.show()
+        
+        # plt.imshow(donut_mask[0][0].cpu())
+        # plt.title('donut mask')
+        # plt.show()
+
+        plot = kw.get("plot_donut_mask")
+        if plot:
+            plot(donut_mask)
+
+        # batch_gts
+        # plt.imshow(batch_gts[0][0].cpu())
+        # plt.title('batch gts')
+        # plt.show()
+
+        # plt.imshow(masked_heatmaps[0][0].detach().numpy())
+        # plt.title('masked heatmaps')
+        # plt.show()
+
+        # plt.imshow(masked_batch_gts[0][0].detach().numpy())
+        # plt.title('masked batch gts')
+        # plt.show()
+        
+        # print(loss, '--los')
+        return loss
+
+    def cal_loss_point(self, batch_gts, heatmap_out_i, i, size, device, **kw):
+        heatmaps = F.interpolate(heatmap_out_i, size=size, mode="bilinear").to(device)
         # handle bi_mode
         loss_point = 0
-        if self.bi_mode and i <= 1:
+        if self.is_donut_mode:
+            # hard code thres value
+            donut_thres_out = 0.15
+            donut_thres_in = 0.6
+            loss_point = self.cal_donut_loss(
+                heatmaps, batch_gts, donut_thres_out, donut_thres_in, **kw
+            )
+        elif self.bi_mode and i <= 1:
             # already assert n_stages == 3 for bi_mode
             batch_gts = self.to_binary(batch_gts, self.bi_thres)
             loss_point = self.bce(heatmaps, batch_gts)
         else:
             loss_point = F.mse_loss(heatmaps, batch_gts)
         return loss_point
-    
+
     def cal_loss_link(self, batch_gtl, paf_outs, i, size, device):
         pafs = F.interpolate(paf_outs[i], size=size, mode="bilinear").to(device)
         loss_link = F.mse_loss(pafs, batch_gtl)
         return loss_link
 
-    def cal_loss(self, pred, gt, device="cuda"):
+    def cal_loss(self, pred, gt, device="cuda", **kw):
         gt = self.gen_gt(gt)
         heatmap_outs, paf_outs = pred
         # scale up each out from 90 to 720
@@ -181,7 +252,9 @@ class PAF(nn.Module):
             # print(batch_gts.shape, 'gts')
             # print(batch_gtl.shape, 'gtl')
             # t3 = time.time()
-            loss_point += self.cal_loss_point(batch_gts, heatmap_outs[i], i, size, device)
+            loss_point += self.cal_loss_point(
+                batch_gts, heatmap_outs[i], i, size, device, **kw
+            )
             if len(paf_outs) > 0:
                 loss_link += self.cal_loss_link(batch_gtl, paf_outs, i, size, device)
 
@@ -329,6 +402,7 @@ def test_forword(device="cuda"):
             print("out shape", len(out))
             for o in out:
                 print(o.shape)
+
 
 def plot_img_keypoint(img, keypoint):
     print(keypoint)
@@ -648,7 +722,7 @@ def test_custom_mode_with_loader(device="cuda"):
         batch_gts, batch_gtl = Model.reshape_gt(2, gt, stage, device)
         # print(batch_gts.shape, batch_gtl.shape)
 
-        GTGen.plot_mean_heat(axs, batch_gts[0].to('cpu'), batch_gtl[0].to('cpu'))
+        GTGen.plot_mean_heat(axs, batch_gts[0].to("cpu"), batch_gtl[0].to("cpu"))
         # plt.show()
         plt.savefig(f"{i}.png")
         break
