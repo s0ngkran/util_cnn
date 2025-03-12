@@ -1,6 +1,6 @@
-# checked!!! divided 720 is correct 
+# checked!!! divided 720 is correct
 CUSTOM_SIGMA_LINKS = [
-    x /720 
+    x / 720
     for x in [
         #
         20,
@@ -50,8 +50,9 @@ CUSTOM_SIGMA_POINTS = [
     ]
 ]
 
+
 class Const:
-    mode_single_point_left_shoulder = 'single-point-left-shoulder'
+    mode_single_point_left_shoulder = "single-point-left-shoulder"
 
 
 def config():
@@ -312,16 +313,19 @@ def config():
             "data": Const.mode_single_point_left_shoulder,
             "img_size": 128,
             "mode": "label-encoding-add-channel",
-            "data_aug": [1, 2, 4],
+            "data_aug": [ref1, ref2, ref4],
+            "data_aug_weight": [1, 2, 1],
             "data_in": "img+channel",
-            "loss": "mse"
+            "loss": "mse",
+            "remark": "vgg pretrained have only 3 channels",
         },
         "s-label-f": {
             "data": Const.mode_single_point_left_shoulder,
             "img_size": 128,
             "mode": "label-encoding-filter",
-            "data_aug": [1, 2, 4],
+            "data_aug": [ref1, ref2, ref4],
+            "data_aug_weight": [1, 2, 1],
             "data_in": "img+unique_filter",
-            "loss": "mse"
+            "loss": "mse",
         },
     }

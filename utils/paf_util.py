@@ -87,8 +87,9 @@ class VGG19(nn.Module):
                                                make_standard_block(256, 128, 3))
         init(self.feature_extractor)
 
-    def forward(self, x):
-        x = self.vgg(x)
+    def forward(self, batch_img):
+        x = self.vgg(batch_img)
         x = self.feature_extractor(x)
         # print('out vgg', x.shape)
         return x
+

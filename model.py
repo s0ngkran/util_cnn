@@ -12,11 +12,21 @@ from utils.cuda import *
 from torch.utils.data import DataLoader
 from data01 import MyDataset, Data
 from config import config, Const
+import random
+from utils.pattern import *
+from dataclasses import dataclass
 
 try:
     import matplotlib.pyplot as plt
 except:
     pass
+
+
+@dataclass
+class DataAug:
+    index: str
+    sigma_size: str
+    unique_filter: str
 
 
 class PAF(nn.Module):
@@ -36,6 +46,7 @@ class PAF(nn.Module):
     ):
         super().__init__()
         self.kw = kw
+        self.raw_config = kw.get("raw_config", {})
         if bi_mode:
             assert n_stage == 3
         self.bi_mode = bi_mode
@@ -69,12 +80,12 @@ class PAF(nn.Module):
             print(kw)
 
         self.is_single_point_left_shoulder = (
-            kw.get("raw_config").get("data") == Const.mode_single_point_left_shoulder
+            self.raw_config.get("data") == Const.mode_single_point_left_shoulder
         )
         if self.is_single_point_left_shoulder:
             self.n_joint = 1
             self.n_paf = 0
-        self.is_donut_mode = kw.get("raw_config").get("mode") == "donut"
+        self.is_donut_mode = self.raw_config.get("mode") == "donut"
 
         self.backend = VGG19(no_weight=no_weight)
         backend_outp_feats = 128
@@ -82,6 +93,7 @@ class PAF(nn.Module):
         for i in range(n_stage - 1):
             stages.append(Stage(backend_outp_feats, self.n_joint, self.n_paf, False))
         self.stages = nn.ModuleList(stages)
+
         self.gt_gen = self._init_gt_generator(
             img_size, sigma_points, sigma_links, links, **kw
         )
@@ -92,6 +104,31 @@ class PAF(nn.Module):
             self.bce = nn.BCEWithLogitsLoss()
             print()
             print("message from model: bi_mode activated")
+        self.current_data_augs = []
+        self.data_in = self.raw_config.get("data_in")
+        self.data_aug = self.raw_config.get("data_aug")
+        self.data_aug_weight = self.raw_config.get("data_aug_weight")
+        # make data_aug btw -1 and 1
+        if self.data_aug:
+            self.scaled_data_aug = self.get_scaled_data_aug(self.data_aug)
+            self.unique_filters = []
+            assert len(self.data_aug) == 3, "only 3 patterns are prepared"
+            for i, sigma in enumerate(self.data_aug):  # no need to scale
+                unique_filter = generate_unique_filter_linear(i, self.img_size)  # noqa: F405
+                self.unique_filters.append(DataAug(i, sigma, unique_filter))
+                # print(unique_filter.shape, 'unique filter shape--')
+                # plot
+            #     plt.imshow(unique_filter)
+            #     plt.title(f'unique filter sigma={i}')
+            #     plt.show()
+            # 1/0
+
+        # print(self.scaled_data_aug, 'scaled data aug') # -1, -0.3, 1
+
+    def get_scaled_data_aug(self, data_aug):
+        mx = max(data_aug)
+        mn = min(data_aug)
+        return [(x - mn) / (mx - mn) * 2 - 1 for x in data_aug]
 
     def __str__(self):
         txt = ["PAF model"]
@@ -103,8 +140,72 @@ class PAF(nn.Module):
         txt = " ".join(txt)
         return txt
 
-    def forward(self, x):
-        return self.forward_normal(x)
+    def add_channel(self, batch_img):
+        # add the 4th channel
+        n = len(batch_img)
+        self.randomed_sigmas = random.choices(
+            self.scaled_data_aug, weights=self.data_aug_weight, k=n
+        )
+        # print size before adding channel
+        # print(batch_img[0].shape, 'before adding channel')
+        sigma_maps = torch.stack(
+            [torch.ones_like(batch_img[0, 0]) * sigma for sigma in self.randomed_sigmas]
+        )
+        sigma_maps = sigma_maps.unsqueeze(1)
+        new_batch = torch.cat([batch_img, sigma_maps], dim=1)
+        # print(new_batch[0].shape, 'after adding channel') # should be 4 instead of 3
+        # new_batch shape = 5, 4, 128, 128
+
+        # loop plt plot each image
+        # for c in range(4):
+        # print first 3 values of each channel
+        # print(new_batch[0][c][0][0:10], 'c=',c)
+        # break
+        # plt.imshow(new_batch[i][0].cpu())
+        # plt.title(f'img {i}')
+        # plt.show()
+        # 1/0
+        return new_batch
+
+    def add_unique_filter(self, batch_img):
+        n = len(batch_img)
+        self.current_data_augs = random.choices(
+            self.unique_filters, weights=self.data_aug_weight, k=n
+        )
+        for d in self.current_data_augs:
+            print(d.index, d.sigma_size)
+        
+        imgs = []
+        # apply unique filter to each image
+        for i, (unique_filter, img) in enumerate(zip(self.current_data_augs, batch_img)):
+            unique_filter = unique_filter.unique_filter
+            
+            prepared_unique_filter = torch.stack([unique_filter for _ in range(3)]) 
+            # print(prepared_unique_filter.shape, 'prepared unique filter shape')
+            
+            # apply to img
+            img = img * prepared_unique_filter
+            imgs.append(img)
+            # print(img.shape, 'img shape')
+            
+            #plot
+            # for i in range(3):
+            #     plt.imshow(img[i].cpu())
+            #     plt.title(f'img {i}')
+            #     plt.show()
+            # 1/0
+        new_batch = torch.stack(imgs)
+        return new_batch
+
+    def forward(self, batch_img):
+        if self.is_single_point_left_shoulder:
+            if self.data_in == "img+channel":
+                assert False, "pretrained VGG19 use 3 channels"
+                batch_img = self.add_channel(batch_img)
+            if self.data_in == "img+unique_filter":
+                batch_img = self.add_unique_filter(batch_img)
+
+        return self.forward_normal(batch_img)
 
     def forward_normal(self, x):
         img_feats = self.backend(x)
@@ -143,37 +244,39 @@ class PAF(nn.Module):
         batch_gtl = None if batch_gtl[0] is None else torch.stack(batch_gtl).to(device)
         return batch_gts, batch_gtl
 
-    def cal_donut_loss(self, heatmaps, batch_gts, donut_thres_out, donut_thres_in, **kw):
-        donut_mask_out = (batch_gts > donut_thres_out).float() 
+    def cal_donut_loss(
+        self, heatmaps, batch_gts, donut_thres_out, donut_thres_in, **kw
+    ):
+        donut_mask_out = (batch_gts > donut_thres_out).float()
         # _1111111_
-        '''
+        """
         -------
         -11111-
         -11111-
         -11111-
         -------
-        '''
+        """
         donut_mask_in = (batch_gts < donut_thres_in).float()
         # 1111___1111
-        '''
+        """
         1111111
         1111111
         11---11
         1111111
         1111111
-        '''
+        """
         donut_mask = donut_mask_out * donut_mask_in
         # __11___11___
-        '''
+        """
         -------
         -11111-
         -1---1-
         -11111-
         -------
-        '''
-        inverted_donut_mask = 1 - donut_mask ## checked
-        masked_heatmaps = heatmaps * inverted_donut_mask ## checked
-        masked_batch_gts = batch_gts * inverted_donut_mask ## checked
+        """
+        inverted_donut_mask = 1 - donut_mask  ## checked
+        masked_heatmaps = heatmaps * inverted_donut_mask  ## checked
+        masked_batch_gts = batch_gts * inverted_donut_mask  ## checked
         loss = F.mse_loss(masked_heatmaps, masked_batch_gts)
 
         # plt.imshow(donut_mask_out[0][0].cpu())
@@ -182,7 +285,7 @@ class PAF(nn.Module):
         # plt.imshow(donut_mask_in[0][0].cpu())
         # plt.title('donut mask in')
         # plt.show()
-        
+
         # plt.imshow(donut_mask[0][0].cpu())
         # plt.title('donut mask')
         # plt.show()
@@ -203,7 +306,7 @@ class PAF(nn.Module):
         # plt.imshow(masked_batch_gts[0][0].detach().numpy())
         # plt.title('masked batch gts')
         # plt.show()
-        
+
         # print(loss, '--los')
         return loss
 
@@ -215,8 +318,8 @@ class PAF(nn.Module):
             # hard code thres value
             # donut_thres_out = 0.15 # 1x 128
             # donut_thres_in = 0.6 # 1x 128
-            donut_thres_out = 0.5 # 2x 128
-            donut_thres_in = 0.85 # 2x 128
+            donut_thres_out = 0.5  # 2x 128
+            donut_thres_in = 0.85  # 2x 128
             loss_point = self.cal_donut_loss(
                 heatmaps, batch_gts, donut_thres_out, donut_thres_in, **kw
             )
@@ -225,6 +328,9 @@ class PAF(nn.Module):
             batch_gts = self.to_binary(batch_gts, self.bi_thres)
             loss_point = self.bce(heatmaps, batch_gts)
         else:
+            func = kw.get("plot_multi_sigma_size")
+            if func:
+                func(batch_gts)
             loss_point = F.mse_loss(heatmaps, batch_gts)
         return loss_point
 
@@ -234,7 +340,12 @@ class PAF(nn.Module):
         return loss_link
 
     def cal_loss(self, pred, gt, device="cuda", **kw):
-        gt = self.gen_gt(gt)
+        args = {}
+        if self.is_single_point_left_shoulder and len(self.current_data_augs) > 0:
+            args = {
+                'current_data_augs': self.current_data_augs,
+            }
+        gt = self.gt_gen(gt, **args)
         heatmap_outs, paf_outs = pred
         # scale up each out from 90 to 720
         loss_point = 0

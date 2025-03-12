@@ -2,14 +2,18 @@ import torch
 from torchvision.transforms.functional import to_pil_image
 import time
 from config import Const
+import random
 
 try:
     import matplotlib.pyplot as plt
 except:
     pass
 
+
 class GTGen:
     def __init__(self, img_size, sigma_points, sigma_links, links, n_keypoint=19, **kw):
+        self.kw = kw
+        self.raw_config = kw.get("raw_config")
         self.img_size = img_size
         self.links = links
         self.n_keypoint = n_keypoint
@@ -17,8 +21,13 @@ class GTGen:
         self.sigma_links = sigma_links
         self.is_custom_mode = kw.get("is_custom_mode", False)
         self.is_use_old_mode = kw.get("is_use_old_mode", False)
-        self.is_no_links_custom_mode = kw.get('is_no_links_custom_mode', False)
-        self.is_single_point_left_shoulder = kw.get('raw_config').get('data') == Const.mode_single_point_left_shoulder
+        self.is_no_links_custom_mode = kw.get("is_no_links_custom_mode", False)
+        self.is_single_point_left_shoulder = (
+            self.raw_config.get("data") == Const.mode_single_point_left_shoulder
+        )
+        self.is_unique_filter_mode = (
+            self.raw_config.get("data_in") == "img+unique_filter"
+        )
 
         if not self.is_custom_mode and not self.is_use_old_mode:
             self.is_use_old_mode = True
@@ -37,9 +46,13 @@ class GTGen:
 
         if self.is_custom_mode:
             if not self.is_no_links_custom_mode:
-                assert len(sigma_links) == len(links), f"{len(sigma_links)} {len(links)}"
+                assert len(sigma_links) == len(links), (
+                    f"{len(sigma_links)} {len(links)}"
+                )
 
-            assert len(sigma_points) == self.n_keypoint, f"{len(sigma_points)=} {n_keypoint=}"
+            assert len(sigma_points) == self.n_keypoint, (
+                f"{len(sigma_points)=} {n_keypoint=}"
+            )
 
         gaussian_size = img_size * 2
         big_gaussians = {}
@@ -63,11 +76,25 @@ class GTGen:
                 big_gaussians[str(sigma_point)] = m
             self.big_gaussians = big_gaussians
 
-    def __call__(self, keypoints):
+    def __call__(self, keypoints, **args):
         keypoints = self._handle_keypoint_batch(keypoints)
         batch = []
-        for keypoint in keypoints:
-            gt_list = self._gen_one_img(keypoint)
+
+        current_data_augs = args.get("current_data_augs", [])
+        if len(current_data_augs) > 0:
+            assert len(current_data_augs) == len(keypoints), (
+                f"{len(current_data_augs)} {len(keypoints)}"
+            )
+
+        for i, keypoint in enumerate(keypoints):
+            ar = {}
+            if self.is_unique_filter_mode:
+                data_aug = current_data_augs[i]
+                sp = data_aug.sigma_size
+                # index = data_aug.index
+                # print(index, 'index')
+                ar = {"sp": sp}
+            gt_list = self._gen_one_img(keypoint, **ar)
             batch.append(gt_list)
         return batch
 
@@ -99,19 +126,24 @@ class GTGen:
                 kps[b, i, 1] = y[b]
         return kps
 
-    def _gen_one_img(self, keypoint):
-        # t0 = time.time()
+    def _gen_one_img(self, keypoint, **args):  # t0 = time.time()
         size = self.img_size
         x_list = [k[0] * size for k in keypoint]
         y_list = [k[1] * size for k in keypoint]
         xy = x_list, y_list
         gt_list = []
-        self.sigma_links = self.sigma_links if self.sigma_links is not None else [None for i in self.sigma_points]
+        self.sigma_links = (
+            self.sigma_links
+            if self.sigma_links is not None
+            else [None for i in self.sigma_points]
+        )
         # print(keypoint)
         # print('sp', self.sigma_points)
         # print('sl', self.sigma_links)
         # 1/0
-        for sp, sl in zip(self.sigma_points, self.sigma_links):
+        for i, (sp, sl) in enumerate(zip(self.sigma_points, self.sigma_links)):
+            if args.get("sp"):
+                sp = args.get("sp")
             gt = self._gen_one_size(sp, xy, sl)
             # shape (n_kp, 720, 720)
             gt_list.append(gt)
@@ -259,9 +291,9 @@ class GTGen:
 
     @staticmethod
     def plot_mean_heat(axs, gts, gtl):
-
         axs[0].imshow(gts.mean(0))
         axs[1].imshow(gtl.mean(0))
+
 
 def test_mini():
     size = 720
@@ -281,8 +313,8 @@ def test_gen_gt():
     # sigma_points = [11.6, 7.6, 5.6]
     # sigma_links = [11.6, 7.6, 5.6]
 
-    sigma_points = [x/720 for x in [11.6, 70.6, 5.6]]
-    sigma_links = [x/720 for x in [11.6, 7.6, 50.6]]
+    sigma_points = [x / 720 for x in [11.6, 70.6, 5.6]]
+    sigma_links = [x / 720 for x in [11.6, 7.6, 50.6]]
 
     kw = {
         "is_use_old_mode": False,
@@ -304,8 +336,6 @@ def test_gen_gt():
         # GTGen.plot_first_heat(axs, gts, gtl)
         GTGen.plot_mean_heat(axs, gts, gtl)
     plt.show()
-
-
 
 
 if __name__ == "__main__":
