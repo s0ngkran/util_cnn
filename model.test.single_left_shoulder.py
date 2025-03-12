@@ -65,7 +65,9 @@ def config_heat():
         "raw_config": {"data": Const.mode_single_point_left_shoulder, "mode": "heatmap"}
     }
     device = "cpu"
-    sigma_points = [11.6, 11.6, 11.6]
+    ref = 11.6
+    ref2 = ref * 2
+    sigma_points = [ref2, ref2, ref2]
     sigma_links = [11.6, 11.6, 11.6]
     img_size = 128
 
@@ -80,7 +82,9 @@ def config_donut():
         "raw_config": {"data": Const.mode_single_point_left_shoulder, "mode": "donut"}
     }
     device = "cpu"
-    sigma_points = [11.6, 11.6, 11.6]
+    ref = 11.6
+    ref2 = ref * 2
+    sigma_points = [ref2, ref2, ref2]
     sigma_links = [11.6, 11.6, 11.6]
     img_size = 128
 

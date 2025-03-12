@@ -213,8 +213,10 @@ class PAF(nn.Module):
         loss_point = 0
         if self.is_donut_mode:
             # hard code thres value
-            donut_thres_out = 0.15
-            donut_thres_in = 0.6
+            # donut_thres_out = 0.15 # 1x 128
+            # donut_thres_in = 0.6 # 1x 128
+            donut_thres_out = 0.5 # 2x 128
+            donut_thres_in = 0.85 # 2x 128
             loss_point = self.cal_donut_loss(
                 heatmaps, batch_gts, donut_thres_out, donut_thres_in, **kw
             )
