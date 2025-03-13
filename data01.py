@@ -207,7 +207,7 @@ class MyDataset(Dataset):
 
         new_x = x - crop_x1
         new_y = y - crop_y1
-        new_keypoint = (new_x, new_y)
+        new_keypoint = [[new_x, new_y]]
 
         if self.check_bad_keypoint(keypoint):
             return False
