@@ -364,7 +364,8 @@ def avg(losses: list):
 def main():
     global lowest_va_loss, sigma_points
     profile = args.profile
-    while True:
+    # while True:
+    for i in range(1500):
         if args.pilot and epoch in [CHANGE_SIGMA_AT_EP]:
             update_sigma(SIGMA_POINTS_2, SIGMA_LINKS_2)
             print("update sigma")
