@@ -63,6 +63,8 @@ def config():
     ref4 = ref * 4
     ref10 = ref * 10
     scaledRef2 = ref2*256/720 # 2x in 720 = best. So, try 2x in 256 
+    scaledRef2_128 = ref2*128/720 
+    scaledRef3_128 = ref3*128/720 
     return {
         # image size -> acc
         "s720": {
@@ -305,6 +307,28 @@ def config():
             "loss": "mse",
 
         },
+        "s-heat-scaled-2": { # no converge
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [scaledRef2_128, scaledRef2_128, scaledRef2_128],
+            "sigma_links": [scaledRef2_128, scaledRef2_128, scaledRef2_128],
+            "img_size": 128,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
+
+        },
+        "s-heat-scaled-3": { # converge bef ep 300
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [scaledRef3_128, scaledRef3_128, scaledRef3_128],
+            "sigma_links": [scaledRef3_128, scaledRef3_128, scaledRef3_128],
+            "img_size": 128,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
+
+        },
         "s-heat-256": {
             "data": Const.mode_single_point_left_shoulder,
             "sigma_points": [ref2, ref2, ref2],
@@ -316,7 +340,7 @@ def config():
             "loss": "mse",
 
         },
-        "s-heat-scaled-256": {
+        "s-heat-scaled-256": { # converge bef ep 200
             "data": Const.mode_single_point_left_shoulder,
             "sigma_points": [scaledRef2, scaledRef2, scaledRef2],
             "sigma_links": [scaledRef2, scaledRef2, scaledRef2],
