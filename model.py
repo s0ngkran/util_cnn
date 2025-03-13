@@ -109,7 +109,7 @@ class PAF(nn.Module):
         self.data_aug = self.raw_config.get("data_aug")
         self.data_aug_weight = self.raw_config.get("data_aug_weight")
         # make data_aug btw -1 and 1
-        if self.data_aug:
+        if len(self.data_aug) > 1:
             self.scaled_data_aug = self.get_scaled_data_aug(self.data_aug)
             self.unique_filters = []
             assert len(self.data_aug) == 3, "only 3 patterns are prepared"
@@ -403,7 +403,15 @@ class PAF(nn.Module):
     def get_pred(self, output, func):
         keypoint_batch = self.get_keypoints(output)
         pred_batch = [func(k) for k in keypoint_batch]
+        # each k has 19 keypoints
         return pred_batch
+
+    # this function for single point
+    def get_pred_for_dist_err(self, output):
+        keypoint_batch = self.get_keypoints(output)
+        # each k has only on (x, y)
+        return keypoint_batch
+
 
     @staticmethod
     def gt_batch_to_list(gt_keypoints):

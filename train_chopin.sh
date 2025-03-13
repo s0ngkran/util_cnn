@@ -119,18 +119,6 @@ tr_te_bi(){
 # done
 
 # for ep in {900..1300..100}
-# do
-#     config=bi90
-#     name=IC_0
-#     fname="${config}_${name}.$ep"
-#     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
-# done
-
-# for ep in {900..1300..100}
-# do
-#     config=bi10
-#     name=IC_0
-#     fname="${config}_${name}.$ep"
 #     python test.py $fname 360 -d cuda -b 10 --pred_keypoints --weight save/$fname;
 # done
 # for ep in {100..700..100}

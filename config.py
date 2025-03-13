@@ -62,6 +62,7 @@ def config():
     ref3 = ref * 3
     ref4 = ref * 4
     ref10 = ref * 10
+    scaledRef2 = ref2*256/720 # 2x in 720 = best. So, try 2x in 256 
     return {
         # image size -> acc
         "s720": {
@@ -295,7 +296,31 @@ def config():
         # }
         "s-heat": {
             "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref2, ref2, ref2],
+            "sigma_links": [ref2, ref2, ref2],
             "img_size": 128,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
+
+        },
+        "s-heat-256": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref2, ref2, ref2],
+            "sigma_links": [ref2, ref2, ref2],
+            "img_size": 256,
+            "mode": "heatmap",
+            "data_aug": [2],
+            "data_in": "img",
+            "loss": "mse",
+
+        },
+        "s-heat-scaled-256": {
+            "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [scaledRef2, scaledRef2, scaledRef2],
+            "sigma_links": [scaledRef2, scaledRef2, scaledRef2],
+            "img_size": 256,
             "mode": "heatmap",
             "data_aug": [2],
             "data_in": "img",
@@ -303,6 +328,8 @@ def config():
         },
         "s-donut": {
             "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref2, ref2, ref2],
+            "sigma_links": [ref2, ref2, ref2],
             "img_size": 128,
             "mode": "donut",
             "data_aug": [2],
@@ -311,6 +338,8 @@ def config():
         },
         "s-label-c": {
             "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref1, ref2, ref4],
+            "sigma_links": [ref1, ref2, ref4],
             "img_size": 128,
             "mode": "label-encoding-add-channel",
             "data_aug": [ref1, ref2, ref4],
@@ -321,6 +350,8 @@ def config():
         },
         "s-label-f": {
             "data": Const.mode_single_point_left_shoulder,
+            "sigma_points": [ref1, ref2, ref4],
+            "sigma_links": [ref1, ref2, ref4],
             "img_size": 128,
             "mode": "label-encoding-filter",
             "data_aug": [ref1, ref2, ref4],
