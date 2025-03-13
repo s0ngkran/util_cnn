@@ -24,7 +24,7 @@ def plot_img(img, keypoint=None):
     plt.show()
 
 def plot():
-    img_size = 64
+    img_size = 256
     kw = {
         "raw_config": {"data": Const.mode_single_point_left_shoulder}
     }
@@ -32,9 +32,16 @@ def plot():
     for i, d in enumerate(data):
         if i < 1:
             continue
+        if i > 5:
+            break
         img = d["inp"]
         keypoint = d["keypoint"]
         gt = d["gt"]
+
+        plt.imshow(img.permute(1, 2, 0).numpy())
+        plt.show()
+        continue
+
         # print(keypoint)
         print(i, keypoint)
         # plot_img(img, keypoint)
