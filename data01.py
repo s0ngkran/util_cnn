@@ -177,6 +177,43 @@ class MyDataset(Dataset):
             return False
         img = img_pil.rotate(angle)
         return img, keypoint
+    
+    def gen_cropped_data_for_single_point(self, img_pil, keypoint, img_size):
+        keypoint = keypoint.copy()
+        assert len(keypoint) == 1
+        img_pil = img_pil.resize((img_size, img_size))
+        h, w = img_size, img_size
+        x, y = keypoint[0]
+
+        pad_x = 0.3
+        pad_y = 0.3
+
+        kp_pad_x = x * 0.3
+        kp_pad_y = y * 0.3
+
+        left = max(0, x - kp_pad_x)
+        right = min(w, x + kp_pad_x)
+        top = max(0, y - kp_pad_y)
+        bottom = min(h, y + kp_pad_y)
+
+        crop_x1 = max(0, left - pad_x)
+        crop_x2 = min(w, right + pad_x)
+        crop_y1 = max(0, top - pad_y)
+        crop_y2 = min(h, bottom + pad_y)
+
+        cropped_image = img_pil.crop(
+            (crop_x1 * img_size, crop_y1 * img_size, crop_x2 * img_size, crop_y2 * img_size)
+        )
+
+        new_x = x - crop_x1
+        new_y = y - crop_y1
+        new_keypoint = [[new_x, new_y]]
+
+        if self.check_bad_keypoint(keypoint):
+            return False
+
+        cropped_image = cropped_image.resize((img_size, img_size))
+        return cropped_image, new_keypoint
 
     def gen_cropped_data(self, img_pil, keypoint, img_size):
         keypoint = keypoint.copy()
@@ -234,6 +271,11 @@ class MyDataset(Dataset):
         cropped_image = img_pil.crop(
             (x_min * img_size, y_min * img_size, x_max * img_size, y_max * img_size)
         )
+        # %.2f
+        # title = f"x_min, x_max, y_min, y_max = {x_min:.2f}, {x_max:.2f}, {y_min:.2f}, {y_max:.2f}"
+        # plt.imshow(cropped_image)
+        # plt.title(title)
+        # plt.show()
         cropped_image = cropped_image.resize((img_size, img_size))
         return cropped_image, keypoint
 
@@ -283,30 +325,44 @@ class MyDataset(Dataset):
         image_tensor = preprocess(image_pil)
         return image_tensor
 
-
     def do_transform(self, image_pil, keypoint):
-        max_angle_degree = 45
-        # if random.random() > 0.5:
-        #     # print('here')
-        #     image_pil, keypoint = self.gen_cropped_data(image_pil, keypoint, img_size=self.img_size)
-        #     image_pil, keypoint = self.gen_rotated_data(image_pil, keypoint, max_angle_degree)
-        # else:
-        res = self.gen_rotated_data(image_pil, keypoint, max_angle_degree)
-        if type(res) is tuple:
-            image_pil, keypoint = res
-        res = self.gen_cropped_data(image_pil, keypoint, img_size=self.img_size)
-        if type(res) is tuple:
-            image_pil, keypoint = res
+        is_aug_this_img = random.random() < 0.5
 
+        if is_aug_this_img:
+            max_angle_degree = 45
+            res = self.gen_rotated_data(image_pil, keypoint, max_angle_degree)
+            if type(res) is tuple:
+                image_pil, keypoint = res
+            
+            if self.mode != Const.mode_single_point_left_shoulder:
+                res = self.gen_cropped_data(image_pil, keypoint, img_size=self.img_size)
+                if type(res) is tuple:
+                    image_pil, keypoint = res
+            
+            if self.mode == Const.mode_single_point_left_shoulder:
+                res = self.gen_cropped_data_for_single_point(image_pil, keypoint, img_size=self.img_size)
+                if type(res) is tuple:
+                    image_pil, keypoint = res
+        
         trans = [
             transforms.Resize(self.img_size),
-            transforms.ColorJitter(
-                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2
-            ),
-            transforms.RandomGrayscale(p=0.1),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
+        if is_aug_this_img and random.random() < 0.5:
+            trans.extend([
+                transforms.ColorJitter(
+                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2
+                ),
+            ])
+        trans.extend([
+            transforms.RandomGrayscale(p=0.1),
+        ])
+        trans.extend([
+            transforms.ToTensor(),
+        ])
+        if is_aug_this_img and random.random() < 0.5:
+            trans.extend([
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
         preprocess = transforms.Compose(trans)
         image_tensor = preprocess(image_pil)
         return image_tensor, keypoint

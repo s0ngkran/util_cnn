@@ -218,9 +218,14 @@ args="-b 10 -lr -4 -se 100 -fs 2000 -s 2000";
 # use this
 args="-b 30 -lr -4 -se 100 -fs 1000 -s 999";
 # tr s-heat SS_1 "$args"
-tr s-heat SS_2 "$args";
+# tr s-heat SS_2 "$args";
+# tr s-heat-scaled SSD_B01 "$args";
+# tr s-heat-scaled-2 SSD_B01 "$args"&
+# tr s-heat-scaled-3 SSE_B01 "$args";
 
 # fname="s-heat_SS_1.best"
-fname="s-heat_SS_2.best"
+# fname="s-heat_SS_2.best"
+# fname="s-heat-scaled-2_SSD_B01.best"
+fname="s-heat-scaled-3_SSE_B01.best"
 python test.py $fname 128 -d cuda -b 1 --config s-heat --pred_keypoints --weight save/$fname;
 
