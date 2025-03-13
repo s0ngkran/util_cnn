@@ -326,7 +326,7 @@ class MyDataset(Dataset):
         return image_tensor
 
     def do_transform(self, image_pil, keypoint):
-        is_aug_this_img = random.random() < 0.8
+        is_aug_this_img = random.random() < 0.5
 
         if is_aug_this_img:
             max_angle_degree = 45
@@ -354,7 +354,9 @@ class MyDataset(Dataset):
                 ),
             ])
         trans.extend([
-            transforms.RandomGrayscale(p=0.2),
+            transforms.RandomGrayscale(p=0.1),
+        ])
+        trans.extend([
             transforms.ToTensor(),
         ])
         if is_aug_this_img and random.random() < 0.5:
