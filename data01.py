@@ -346,13 +346,21 @@ class MyDataset(Dataset):
         
         trans = [
             transforms.Resize(self.img_size),
-            transforms.ColorJitter(
-                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2
-            ),
-            transforms.RandomGrayscale(p=0.1),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
+        if is_aug_this_img and random.random() < 0.5:
+            trans.extend([
+                transforms.ColorJitter(
+                    brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2
+                ),
+            ])
+        trans.extend([
+            transforms.RandomGrayscale(p=0.2),
+            transforms.ToTensor(),
+        ])
+        if is_aug_this_img and random.random() < 0.5:
+            trans.extend([
+                transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
         preprocess = transforms.Compose(trans)
         image_tensor = preprocess(image_pil)
         return image_tensor, keypoint
