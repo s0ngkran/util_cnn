@@ -169,11 +169,12 @@ class PAF(nn.Module):
 
     def add_unique_filter(self, batch_img):
         n = len(batch_img)
+        # add these for cal_loss step
         self.current_data_augs = random.choices(
             self.unique_filters, weights=self.data_aug_weight, k=n
         )
-        for d in self.current_data_augs:
-            print(d.index, d.sigma_size)
+        # for d in self.current_data_augs:
+        #     print(d.index, d.sigma_size)
         
         imgs = []
         # apply unique filter to each image
@@ -184,6 +185,9 @@ class PAF(nn.Module):
             # print(prepared_unique_filter.shape, 'prepared unique filter shape')
             
             # apply to img
+            device = img.device
+            prepared_unique_filter = prepared_unique_filter.to(device)
+
             img = img * prepared_unique_filter
             imgs.append(img)
             # print(img.shape, 'img shape')
@@ -342,6 +346,7 @@ class PAF(nn.Module):
     def cal_loss(self, pred, gt, device="cuda", **kw):
         args = {}
         if self.is_single_point_left_shoulder and len(self.current_data_augs) > 0:
+            # send unique filters aug data to gt_gen
             args = {
                 'current_data_augs': self.current_data_augs,
             }
