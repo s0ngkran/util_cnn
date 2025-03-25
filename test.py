@@ -17,6 +17,22 @@ from config import config, Const
 def do_nothing(k):
     return k
 
+def check_label_encoding_filter(training, args):
+    mode = training.get('mode', None)
+    if mode == 'label-encoding-filter':
+        print()
+        print('label-encoding-filter mode, data_aug_index =', args.data_aug_index)
+        data_aug = training.get('data_aug', None)
+        assert data_aug is not None
+        assert training.get('data_in', None) == 'img+unique_filter'
+        assert args.data_aug_index is not None, 'data_aug_index is required for label-encoding-filter mode'
+        n = len(data_aug)
+        assert args.data_aug_index < n
+        print('data_aug_index=', args.data_aug_index)
+        print()
+        return args.data_aug_index
+    return None
+
 if __name__ == '__main__':
 
     parser = ArgumentParser()
@@ -29,6 +45,8 @@ if __name__ == '__main__':
     parser.add_argument('-cus', '--is_custom_mode', action="store_true") 
     parser.add_argument('--pred_keypoints', action="store_true") 
     parser.add_argument('--config') 
+    parser.add_argument('--data_aug_index', type=int) 
+
     args = parser.parse_args()
     assert args.device in [None, 'cpu', 'cuda']
     print(args)
@@ -40,14 +58,17 @@ if __name__ == '__main__':
     training = config()[args.config]
     is_no_links_mode = args.name.startswith('n')
     is_no_links_custom_mode = args.name.startswith('o')
+    data_aug_index_for_testing = check_label_encoding_filter(training, args)
     model_kwargs = {
         "raw_config": training,
         'is_custom_mode': args.is_custom_mode,
         'is_no_links_mode': is_no_links_mode,
         'is_no_links_custom_mode': is_no_links_custom_mode,
+        'data_aug_index_for_testing': data_aug_index_for_testing,
     }
     data_kwargs = {
-        "raw_config": training
+        "raw_config": training,
+        'data_aug_index_for_testing': data_aug_index_for_testing,
     }
 
     ############################ config ###################

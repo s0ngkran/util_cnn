@@ -167,12 +167,17 @@ class PAF(nn.Module):
         # 1/0
         return new_batch
 
-    def add_unique_filter(self, batch_img):
+    def add_unique_filter(self, batch_img, data_aug_index_for_testing=None):
         n = len(batch_img)
-        # add these for cal_loss step
-        self.current_data_augs = random.choices(
-            self.unique_filters, weights=self.data_aug_weight, k=n
-        )
+        if data_aug_index_for_testing is not None:
+            assert data_aug_index_for_testing < len(self.unique_filters)
+            self.current_data_augs = [self.unique_filters[data_aug_index_for_testing]] * n
+            print('data_aug_index_for_testing =', data_aug_index_for_testing)
+        else:
+            # add these for cal_loss step
+            self.current_data_augs = random.choices(
+                self.unique_filters, weights=self.data_aug_weight, k=n
+            )
         # for d in self.current_data_augs:
         #     print(d.index, d.sigma_size)
         
@@ -207,7 +212,8 @@ class PAF(nn.Module):
                 assert False, "pretrained VGG19 use 3 channels"
                 batch_img = self.add_channel(batch_img)
             if self.data_in == "img+unique_filter":
-                batch_img = self.add_unique_filter(batch_img)
+                data_aug_index_for_testing = self.kw.get('data_aug_index_for_testing', None)
+                batch_img = self.add_unique_filter(batch_img, data_aug_index_for_testing)
 
         return self.forward_normal(batch_img)
 
