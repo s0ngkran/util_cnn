@@ -23,3 +23,5 @@ __pycache__
 
 .codegpt
 temp
+utils/linear_patterns.png
+utils/sin_patterns.png
