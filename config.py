@@ -63,8 +63,10 @@ def config():
     ref4 = ref * 4
     ref10 = ref * 10
     scaledRef2 = ref2*256/720 # 2x in 720 = best. So, try 2x in 256 
+    scaledRef1_128 = ref1*128/720 
     scaledRef2_128 = ref2*128/720 
     scaledRef3_128 = ref3*128/720 
+    scaledRef4_128 = ref4*128/720 
     return {
         # image size -> acc
         "s720": {
@@ -307,7 +309,7 @@ def config():
             "loss": "mse",
 
         },
-        "s-heat-scaled-2": { # no converge
+        "s-heat-scaled-2": { # used for heat
             "data": Const.mode_single_point_left_shoulder,
             "sigma_points": [scaledRef2_128, scaledRef2_128, scaledRef2_128],
             "sigma_links": [scaledRef2_128, scaledRef2_128, scaledRef2_128],
@@ -329,7 +331,7 @@ def config():
             "loss": "mse",
 
         },
-        "s-heat-256": {
+        "s-heat-256": { # seem to work
             "data": Const.mode_single_point_left_shoulder,
             "sigma_points": [ref2, ref2, ref2],
             "sigma_links": [ref2, ref2, ref2],
@@ -350,10 +352,10 @@ def config():
             "data_in": "img",
             "loss": "mse",
         },
-        "s-donut": {
+        "s-donut": { # use scale 2
             "data": Const.mode_single_point_left_shoulder,
-            "sigma_points": [ref2, ref2, ref2],
-            "sigma_links": [ref2, ref2, ref2],
+            "sigma_points": [scaledRef2_128, scaledRef2_128, scaledRef2_128],
+            "sigma_links": [scaledRef2_128, scaledRef2_128, scaledRef2_128],
             "img_size": 128,
             "mode": "donut",
             "data_aug": [2],
@@ -362,11 +364,11 @@ def config():
         },
         "s-label-c": {
             "data": Const.mode_single_point_left_shoulder,
-            "sigma_points": [ref1, ref2, ref4],
-            "sigma_links": [ref1, ref2, ref4],
+            "sigma_points": [scaledRef1_128, scaledRef2_128, scaledRef4_128],
+            "sigma_links": [scaledRef1_128, scaledRef2_128, scaledRef4_128],
             "img_size": 128,
             "mode": "label-encoding-add-channel",
-            "data_aug": [ref1, ref2, ref4],
+            "data_aug": [scaledRef1_128, scaledRef2_128, scaledRef4_128],
             "data_aug_weight": [1, 2, 1],
             "data_in": "img+channel",
             "loss": "mse",
@@ -374,11 +376,11 @@ def config():
         },
         "s-label-f": {
             "data": Const.mode_single_point_left_shoulder,
-            "sigma_points": [ref1, ref2, ref4],
-            "sigma_links": [ref1, ref2, ref4],
+            "sigma_points": [scaledRef1_128, scaledRef2_128, scaledRef4_128],
+            "sigma_links": [scaledRef1_128, scaledRef2_128, scaledRef4_128],
             "img_size": 128,
             "mode": "label-encoding-filter",
-            "data_aug": [ref1, ref2, ref4],
+            "data_aug": [scaledRef1_128, scaledRef2_128, scaledRef4_128],
             "data_aug_weight": [1, 2, 1],
             "data_in": "img+unique_filter",
             "loss": "mse",
