@@ -22,3 +22,5 @@ run.sh
 __pycache__
 
 .codegpt
+utils/linear_patterns.png
+utils/sin_patterns.png

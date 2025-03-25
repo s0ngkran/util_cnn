@@ -1,5 +1,6 @@
 from data01 import MyDataset
 from config import Const
+from torch.utils.data import DataLoader
 
 try:
     import matplotlib.pyplot as plt
@@ -28,8 +29,15 @@ def plot():
     kw = {
         "raw_config": {"data": Const.mode_single_point_left_shoulder}
     }
-    data = MyDataset("va", img_size, **kw)
-    for i, d in enumerate(data):
+    data = MyDataset("tr", img_size, **kw)
+    data_loader =  DataLoader(
+        data,
+        batch_size=10,
+        num_workers=5,
+        shuffle=True,
+        drop_last=True,
+    )  # , collate_fn=my_collate)
+    for i, d in enumerate(data_loader):
         if i < 1:
             continue
         if i > 5:
@@ -37,6 +45,7 @@ def plot():
         img = d["inp"]
         keypoint = d["keypoint"]
         gt = d["gt"]
+
 
         plt.imshow(img.permute(1, 2, 0).numpy())
         plt.show()
