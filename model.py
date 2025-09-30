@@ -109,7 +109,7 @@ class PAF(nn.Module):
         self.data_aug = self.raw_config.get("data_aug")
         self.data_aug_weight = self.raw_config.get("data_aug_weight")
         # make data_aug btw -1 and 1
-        if len(self.data_aug) > 1:
+        if self.data_aug != None and len(self.data_aug) > 1:
             self.scaled_data_aug = self.get_scaled_data_aug(self.data_aug)
             self.unique_filters = []
             assert len(self.data_aug) == 3, "only 3 patterns are prepared"

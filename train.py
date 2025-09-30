@@ -250,6 +250,8 @@ print()
 def train(profile=False):
     global model, optimizer, epoch
     model.train()
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f"Total parameters: {total_params}")
     epoch += 1
     losses = []
     if profile:
