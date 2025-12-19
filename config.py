@@ -156,6 +156,11 @@ def config():
             "sigma_links": [ref * 1, ref * 1, ref * 1],
             "img_size": 360,
         },
+        "2y": {
+            "sigma_points": [ref * 2, ref * 2, ref * 2],
+            "sigma_links": [ref * 2, ref * 2, ref * 2],
+            "img_size": 360,
+        },
         "4y": {
             "sigma_points": [ref * 4, ref * 4, ref * 4],
             "sigma_links": [ref * 4, ref * 4, ref * 4],
