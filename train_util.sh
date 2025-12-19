@@ -103,3 +103,14 @@ test_ss(){
     echo $fname $config $size
     python test.py $fname $size -d cuda -b 1 --config $config --pred_keypoints --weight save/$fname;
 }
+
+test_s_label_f(){
+    # test_ss s-heat-scaled-256 SSC_M01 256
+    config=$1
+    name=$2
+    size=$3
+    aug=$4
+    fname="${config}_${name}.best"
+    echo $fname $config $size
+    python test.py $fname $size -d cuda -b 1 --config $config --pred_keypoints --weight save/$fname --data_aug_index $aug;
+}

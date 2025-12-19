@@ -169,6 +169,31 @@ args="-b 30 -lr -4 -se 100 -fs 3000 -s 2999";
 # tr s-heat-256 SSB_1 "$args";
 # tr s-heat-scaled-256 SSC_M01 "$args";
 # tr s-heat-scaled-256 SSI_M01 "$args";
-tr s-label-f SSLA_A01 "$args";
+# tr s-label-f SSLA_A01 "$args";
+# tr s-label-f SSLA_A02 "$args";
+# tr s-label-f SSLA_A03 "$args";
+# tr s-label-f SSLA_A04 "$args";
+# tr s-label-f SSLA_A05 "$args";
 
+# waiting for test
 # test_ss s-heat-scaled-256 SSI_M01 256;
+
+# test_s_label_f s-label-f SSLA_A01 128 0;
+# test_s_label_f s-label-f SSLA_A01 128 1;
+# test_s_label_f s-label-f SSLA_A01 128 2;
+
+test_s_label_f s-label-f SSLA_A02 128 0;
+test_s_label_f s-label-f SSLA_A02 128 1;
+test_s_label_f s-label-f SSLA_A02 128 2;
+
+test_s_label_f s-label-f SSLA_A03 128 0;
+test_s_label_f s-label-f SSLA_A03 128 1;
+test_s_label_f s-label-f SSLA_A03 128 2;
+
+test_s_label_f s-label-f SSLA_A04 128 0;
+test_s_label_f s-label-f SSLA_A04 128 1;
+test_s_label_f s-label-f SSLA_A04 128 2;
+
+test_s_label_f s-label-f SSLA_A05 128 0;
+test_s_label_f s-label-f SSLA_A05 128 1;
+test_s_label_f s-label-f SSLA_A05 128 2;
